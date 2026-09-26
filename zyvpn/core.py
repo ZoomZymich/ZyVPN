@@ -179,6 +179,15 @@ class CoreController:
             time.sleep(0.8)
             if self.primary_process.poll() is not None:
                 ret = self.primary_process.returncode
+                time.sleep(0.2)
+                err_detail = ""
+                with self._lock:
+                    for l in reversed(self.logs):
+                        if f"[{engine_name}]" in l:
+                            err_detail = l.split("]", 2)[-1].strip()
+                            break
+                if err_detail:
+                    raise RuntimeError(f"{engine_name.upper()} error: {err_detail}")
                 raise RuntimeError(f"Engine process exited immediately with code {ret}")
 
             # If TUN helper is requested (Dual-Engine architecture)
@@ -206,7 +215,19 @@ class CoreController:
                 time.sleep(1.0)
                 if self.secondary_process.poll() is not None:
                     ret = self.secondary_process.returncode
-                    raise RuntimeError(f"TUN router exited with code {ret}. Убедитесь, что приложение запущено с правами Администратора.")
+                    time.sleep(0.2)
+                    err_detail = ""
+                    with self._lock:
+                        for l in reversed(self.logs):
+                            if f"[{helper_engine}-tun]" in l:
+                                err_detail = l.split("]", 2)[-1].strip()
+                                break
+                    if "Access is denied" in err_detail or "access is denied" in err_detail.lower():
+                        raise RuntimeError(f"TUN router: Доступ запрещен (Access is denied). Запустите ZyVPN с правами Администратора.")
+                    elif err_detail:
+                        raise RuntimeError(f"TUN router: {err_detail}")
+                    else:
+                        raise RuntimeError(f"TUN router exited with code {ret}")
 
             # Apply System Mode
             if settings.mode == "proxy":

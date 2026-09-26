@@ -3,11 +3,38 @@ import sys
 import ctypes
 import threading
 import json
-from bottle import Bottle, static_file, request, response
+import multiprocessing
+
+# PyInstaller binary compatibility
+multiprocessing.freeze_support()
 
 # Ensure project root in sys.path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
+
+MUTEX_NAME = "Local\\ZyVPN_SingleInstance_Mutex_ZYMA"
+_instance_mutex = None
+
+def check_single_instance() -> bool:
+    """Ensure only one instance runs. If another exists, ping it to restore and exit immediately."""
+    global _instance_mutex
+    if sys.platform != "win32":
+        return True
+    kernel32 = ctypes.windll.kernel32
+    _instance_mutex = kernel32.CreateMutexW(None, False, MUTEX_NAME)
+    last_error = kernel32.GetLastError()
+    # 183 = ERROR_ALREADY_EXISTS
+    if last_error == 183:
+        try:
+            import urllib.request
+            urllib.request.urlopen("http://127.0.0.1:18080/show", timeout=1.0)
+        except Exception:
+            pass
+        return False
+    return True
+
+if not check_single_instance():
+    sys.exit(0)
 
 def is_admin() -> bool:
     """Check if the process is running with Windows Administrator privileges."""
@@ -28,6 +55,12 @@ def ensure_admin():
 
     if sys.platform == "win32":
         try:
+            # Release single instance mutex so the elevated process can claim it
+            global _instance_mutex
+            if _instance_mutex:
+                ctypes.windll.kernel32.CloseHandle(_instance_mutex)
+                _instance_mutex = None
+
             if getattr(sys, 'frozen', False):
                 exe = sys.executable
                 params = " ".join([f'"{a}"' for a in sys.argv[1:]])
@@ -49,8 +82,9 @@ ensure_admin()
 from zyvpn.storage import Storage
 from zyvpn.core import CoreController
 from zyvpn.api import VpnApi
-from zyvpn.paths import get_ui_dir
+from zyvpn.paths import get_ui_dir, get_data_dir
 from zyvpn.tray import TrayController
+from bottle import Bottle, static_file, request, response
 
 storage = Storage()
 core = CoreController()
@@ -59,6 +93,23 @@ api = VpnApi(storage, core)
 # Lightweight Bottle Web Server for UI assets and HTTP API fallback
 server = Bottle()
 UI_DIR = get_ui_dir()
+window = None
+tray = None
+is_quitting = False
+
+def show_window():
+    global window
+    if window:
+        try:
+            window.show()
+            window.restore()
+        except Exception:
+            pass
+
+@server.route("/show")
+def show_route():
+    show_window()
+    return "ok"
 
 @server.route("/")
 def index():
@@ -94,24 +145,14 @@ def run_server():
     server.run(host="127.0.0.1", port=18080, quiet=True)
 
 def main():
+    global window, tray, is_quitting
+
     # Start local HTTP server in background thread
     t = threading.Thread(target=run_server, daemon=True)
     t.start()
 
-    window = None
-    tray = None
-    is_quitting = False
-
-    def on_show_window():
-        if window:
-            try:
-                window.show()
-                window.restore()
-            except Exception:
-                pass
-
     def on_exit():
-        nonlocal is_quitting
+        global is_quitting, _instance_mutex
         is_quitting = True
         try:
             core.stop()
@@ -127,16 +168,29 @@ def main():
                 window.destroy()
             except Exception:
                 pass
+        if _instance_mutex:
+            try:
+                ctypes.windll.kernel32.CloseHandle(_instance_mutex)
+            except Exception:
+                pass
+            _instance_mutex = None
         os._exit(0)
 
     # Initialize system tray
-    tray = TrayController(api=api, on_show_window=on_show_window, on_exit=on_exit)
+    tray = TrayController(api=api, on_show_window=show_window, on_exit=on_exit)
     api.set_tray(tray)
     tray.start()
 
     # Try launching PyWebView desktop window
     try:
         import webview
+        icon_path = os.path.join(BASE_DIR, "zyvpn.ico")
+        if not os.path.exists(icon_path):
+            icon_path = None
+
+        webview_data_dir = os.path.join(get_data_dir(), "webview")
+        os.makedirs(webview_data_dir, exist_ok=True)
+
         window = webview.create_window(
             title="ZyVPN",
             url=os.path.join(UI_DIR, "index.html"),
@@ -167,7 +221,12 @@ def main():
 
         window.events.closing += on_closing
 
-        webview.start(gui="edgechromium", debug=False)
+        webview.start(
+            gui="edgechromium",
+            debug=False,
+            storage_path=webview_data_dir,
+            icon=icon_path
+        )
     except Exception as e:
         print(f"PyWebView GUI error: {e}")
         print("Falling back to browser app mode: http://127.0.0.1:18080")

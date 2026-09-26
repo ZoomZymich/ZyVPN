@@ -948,7 +948,10 @@ async function pollStatus() {
 }
 
 // Initial Data Load
+let isInitialized = false;
 async function init() {
+  if (isInitialized) return;
+  isInitialized = true;
   try {
     const data = await callApi("get_initial_data");
     state.nodes = data.nodes || [];
