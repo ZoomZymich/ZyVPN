@@ -18,7 +18,13 @@ def get_bin_dir() -> str:
     return os.path.join(get_base_dir(), "bin")
 
 def get_data_dir() -> str:
-    """Return path to persistent user data directory."""
+    """Return path to persistent user data directory (in %APPDATA%/ZyVPN on Windows)."""
+    if sys.platform == "win32":
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            data_dir = os.path.join(appdata, "ZyVPN")
+            os.makedirs(data_dir, exist_ok=True)
+            return data_dir
     data_dir = os.path.join(get_base_dir(), "data")
     os.makedirs(data_dir, exist_ok=True)
     return data_dir

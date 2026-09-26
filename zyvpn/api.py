@@ -276,6 +276,7 @@ class VpnApi:
             return {
                 "success": True,
                 "subscription": sub.to_dict(),
+                "subscriptions": [s.to_dict() for s in self.storage.subscriptions],
                 "nodes_count": sub.nodes_count,
                 "nodes": [n.to_dict() for n in self.storage.nodes]
             }

@@ -17,6 +17,16 @@ class Storage:
 
     def load(self):
         if not os.path.exists(self.config_file):
+            # Check if there is an initial config.json in application folder to seed from
+            from .paths import get_base_dir
+            seed_cfg = os.path.join(get_base_dir(), "data", "config.json")
+            if os.path.exists(seed_cfg):
+                try:
+                    import shutil
+                    shutil.copy2(seed_cfg, self.config_file)
+                except Exception:
+                    pass
+        if not os.path.exists(self.config_file):
             self.save()
             return
         try:
@@ -45,7 +55,11 @@ class Storage:
             last_updated=time.strftime("%Y-%m-%d %H:%M")
         )
         self.subscriptions.append(sub)
-        self.refresh_subscription(sub.id)
+        self.save()  # Always save to disk immediately so it is never lost!
+        try:
+            self.refresh_subscription(sub.id)
+        except Exception as e:
+            print(f"Warning refreshing subscription {sub.name}: {e}")
         return sub
 
     def refresh_subscription(self, sub_id: str) -> int:

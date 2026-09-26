@@ -88,6 +88,7 @@ class CoreController:
         self.start_time: float = 0
         self.logs: deque = deque(maxlen=300)
         self._lock = threading.Lock()
+        self._start_lock = threading.Lock()
         self._job = create_kill_on_close_job()
 
         # Clean any stale orphan processes from previous crashes or task manager kills
@@ -132,102 +133,105 @@ class CoreController:
             pass
 
     def start(self, node: VpnNode, settings: AppSettings) -> bool:
-        self.stop()
-        self.status = "connecting"
-        self.error_message = ""
-        self.current_node = node
-        self.current_mode = settings.mode
+        with self._start_lock:
+            self.stop()
+            self.status = "connecting"
+            self.error_message = ""
+            self.current_node = node
+            self.current_mode = settings.mode
 
-        try:
-            # Ensure clean ports
-            self.cleanup_stale_processes()
-            time.sleep(0.2)
-
-            engine_name, config_dict, tun_helper = select_engine_and_generate_config(node, settings)
-            self.log(f"Preparing connection to '{node.name}' via {node.protocol.upper()} ({node.transport.upper()}) [Engine: {engine_name.upper()}, Mode: {settings.mode.upper()}]...")
-
-            cfg_path = os.path.join(self.run_dir, f"{engine_name}_config.json")
-            with open(cfg_path, "w", encoding="utf-8") as f:
-                json.dump(config_dict, f, indent=2, ensure_ascii=False)
-
-            if engine_name == "xray":
-                exe_path = os.path.join(self.bin_dir, "xray.exe")
-                cmd = [exe_path, "run", "-config", cfg_path]
-            else:
-                exe_path = os.path.join(self.bin_dir, "sing-box.exe")
-                cmd = [exe_path, "run", "-c", cfg_path]
-
-            if not os.path.exists(exe_path):
-                raise FileNotFoundError(f"Engine binary not found: {exe_path}")
-
-            self.log(f"Launching primary engine: {os.path.basename(exe_path)}")
-            self.primary_process = subprocess.Popen(
-                cmd,
-                cwd=self.bin_dir,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                creationflags=CREATE_NO_WINDOW
-            )
-            assign_proc_to_job(self._job, self.primary_process)
-
-            # Start thread to read logs
-            t1 = threading.Thread(target=self._stream_output, args=(self.primary_process, engine_name), daemon=True)
-            t1.start()
-
-            # Check if primary engine stayed up
-            time.sleep(0.8)
-            if self.primary_process.poll() is not None:
-                ret = self.primary_process.returncode
+            try:
+                # Ensure clean ports
+                self.cleanup_stale_processes()
                 time.sleep(0.2)
-                err_detail = ""
-                with self._lock:
-                    for l in reversed(self.logs):
-                        if f"[{engine_name}]" in l:
-                            err_detail = l.split("]", 2)[-1].strip()
-                            break
-                if err_detail:
-                    raise RuntimeError(f"{engine_name.upper()} error: {err_detail}")
-                raise RuntimeError(f"Engine process exited immediately with code {ret}")
 
-            # If TUN helper is requested (Dual-Engine architecture)
-            if tun_helper:
-                helper_engine, helper_cfg = tun_helper
-                helper_cfg_path = os.path.join(self.run_dir, f"{helper_engine}_tun_config.json")
-                with open(helper_cfg_path, "w", encoding="utf-8") as f:
-                    json.dump(helper_cfg, f, indent=2, ensure_ascii=False)
+                engine_name, config_dict, tun_helper = select_engine_and_generate_config(node, settings)
+                self.log(f"Preparing connection to '{node.name}' via {node.protocol.upper()} ({node.transport.upper()}) [Engine: {engine_name.upper()}, Mode: {settings.mode.upper()}]...")
 
-                helper_exe = os.path.join(self.bin_dir, f"{helper_engine}.exe")
-                self.log(f"Starting whole-PC TUN router ({os.path.basename(helper_exe)} + Wintun)...")
-                self.secondary_process = subprocess.Popen(
-                    [helper_exe, "run", "-c", helper_cfg_path],
+                cfg_path = os.path.join(self.run_dir, f"{engine_name}_config.json")
+                with open(cfg_path, "w", encoding="utf-8") as f:
+                    json.dump(config_dict, f, indent=2, ensure_ascii=False)
+
+                if engine_name == "xray":
+                    exe_path = os.path.join(self.bin_dir, "xray.exe")
+                    cmd = [exe_path, "run", "-config", cfg_path]
+                else:
+                    exe_path = os.path.join(self.bin_dir, "sing-box.exe")
+                    cmd = [exe_path, "run", "-c", cfg_path]
+
+                if not os.path.exists(exe_path):
+                    raise FileNotFoundError(f"Engine binary not found: {exe_path}")
+
+                self.log(f"Launching primary engine: {os.path.basename(exe_path)}")
+                proc = subprocess.Popen(
+                    cmd,
                     cwd=self.bin_dir,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
                     creationflags=CREATE_NO_WINDOW
                 )
-                assign_proc_to_job(self._job, self.secondary_process)
+                self.primary_process = proc
+                assign_proc_to_job(self._job, proc)
 
-                t2 = threading.Thread(target=self._stream_output, args=(self.secondary_process, f"{helper_engine}-tun"), daemon=True)
-                t2.start()
+                # Start thread to read logs
+                t1 = threading.Thread(target=self._stream_output, args=(proc, engine_name), daemon=True)
+                t1.start()
 
-                time.sleep(1.0)
-                if self.secondary_process.poll() is not None:
-                    ret = self.secondary_process.returncode
+                # Check if primary engine stayed up
+                time.sleep(0.8)
+                if proc and proc.poll() is not None:
+                    ret = proc.returncode
                     time.sleep(0.2)
                     err_detail = ""
                     with self._lock:
                         for l in reversed(self.logs):
-                            if f"[{helper_engine}-tun]" in l:
+                            if f"[{engine_name}]" in l:
                                 err_detail = l.split("]", 2)[-1].strip()
                                 break
-                    if "Access is denied" in err_detail or "access is denied" in err_detail.lower():
-                        raise RuntimeError(f"TUN router: Доступ запрещен (Access is denied). Запустите ZyVPN с правами Администратора.")
-                    elif err_detail:
-                        raise RuntimeError(f"TUN router: {err_detail}")
-                    else:
-                        raise RuntimeError(f"TUN router exited with code {ret}")
+                    if err_detail:
+                        raise RuntimeError(f"{engine_name.upper()} error: {err_detail}")
+                    raise RuntimeError(f"Engine process exited immediately with code {ret}")
+
+                # If TUN helper is requested (Dual-Engine architecture)
+                if tun_helper:
+                    helper_engine, helper_cfg = tun_helper
+                    helper_cfg_path = os.path.join(self.run_dir, f"{helper_engine}_tun_config.json")
+                    with open(helper_cfg_path, "w", encoding="utf-8") as f:
+                        json.dump(helper_cfg, f, indent=2, ensure_ascii=False)
+
+                    helper_exe = os.path.join(self.bin_dir, f"{helper_engine}.exe")
+                    self.log(f"Starting whole-PC TUN router ({os.path.basename(helper_exe)} + Wintun)...")
+                    helper_proc = subprocess.Popen(
+                        [helper_exe, "run", "-c", helper_cfg_path],
+                        cwd=self.bin_dir,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        creationflags=CREATE_NO_WINDOW
+                    )
+                    self.secondary_process = helper_proc
+                    assign_proc_to_job(self._job, helper_proc)
+
+                    t2 = threading.Thread(target=self._stream_output, args=(helper_proc, f"{helper_engine}-tun"), daemon=True)
+                    t2.start()
+
+                    time.sleep(1.0)
+                    if helper_proc and helper_proc.poll() is not None:
+                        ret = helper_proc.returncode
+                        time.sleep(0.2)
+                        err_detail = ""
+                        with self._lock:
+                            for l in reversed(self.logs):
+                                if f"[{helper_engine}-tun]" in l:
+                                    err_detail = l.split("]", 2)[-1].strip()
+                                    break
+                        if "Access is denied" in err_detail or "access is denied" in err_detail.lower():
+                            raise RuntimeError(f"TUN router: Доступ запрещен (Access is denied). Запустите ZyVPN с правами Администратора.")
+                        elif err_detail:
+                            raise RuntimeError(f"TUN router: {err_detail}")
+                        else:
+                            raise RuntimeError(f"TUN router exited with code {ret}")
 
             # Apply System Mode
             if settings.mode == "proxy":

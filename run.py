@@ -8,9 +8,43 @@ import multiprocessing
 # PyInstaller binary compatibility
 multiprocessing.freeze_support()
 
+# Optimize Edge WebView2 RAM consumption
+os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
+    "--renderer-process-limit=1 "
+    "--disk-cache-size=10485760 "
+    "--js-flags=--max-old-space-size=128 "
+    "--disable-features=Translate,OptimizationHints,MediaRouter"
+)
+
 # Ensure project root in sys.path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
+
+def trim_process_memory():
+    """Flush unreferenced memory pages from working set to keep RAM lean."""
+    if sys.platform != "win32":
+        return
+    try:
+        from ctypes import wintypes
+        k32 = ctypes.windll.kernel32
+        psapi = ctypes.windll.psapi
+        k32.GetCurrentProcess.restype = wintypes.HANDLE
+        psapi.EmptyWorkingSet.argtypes = [wintypes.HANDLE]
+        psapi.EmptyWorkingSet.restype = wintypes.BOOL
+        psapi.EmptyWorkingSet(k32.GetCurrentProcess())
+    except Exception:
+        pass
+
+def start_memory_trimmer():
+    def _trim_worker():
+        import time
+        time.sleep(3.0)
+        trim_process_memory()
+        while True:
+            time.sleep(30.0)
+            trim_process_memory()
+    t = threading.Thread(target=_trim_worker, daemon=True)
+    t.start()
 
 MUTEX_NAME = "Local\\ZyVPN_SingleInstance_Mutex_ZYMA"
 _instance_mutex = None
@@ -176,6 +210,9 @@ def main():
             _instance_mutex = None
         os._exit(0)
 
+    # Start memory trimmer loop in background
+    start_memory_trimmer()
+
     # Initialize system tray
     tray = TrayController(api=api, on_show_window=show_window, on_exit=on_exit)
     api.set_tray(tray)
@@ -210,6 +247,7 @@ def main():
                 return True
             try:
                 window.hide()
+                trim_process_memory()
                 if tray:
                     tray.notify(
                         "ZyVPN свёрнут в трей",

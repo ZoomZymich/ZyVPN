@@ -597,6 +597,24 @@ def is_dummy_node(node: VpnNode) -> bool:
         return True
     return False
 
+def fetch_subscription_data(url: str, headers: dict) -> Optional[requests.Response]:
+    """Fetch subscription URL with SSL-fallback and local proxy retry."""
+    try:
+        return requests.get(url, headers=headers, timeout=15)
+    except requests.exceptions.SSLError:
+        try:
+            return requests.get(url, headers=headers, timeout=15, verify=False)
+        except Exception:
+            pass
+    except Exception as e:
+        # If direct failed or blocked, try via local socks/http proxy if active
+        try:
+            proxies = {"http": "http://127.0.0.1:10809", "https": "http://127.0.0.1:10809"}
+            return requests.get(url, headers=headers, timeout=15, proxies=proxies, verify=False)
+        except Exception:
+            pass
+    return None
+
 def fetch_and_parse_subscription(url: str, sub_id: str = "manual") -> List[VpnNode]:
     """
     Download subscription from URL using dual-UA technique:
@@ -609,10 +627,10 @@ def fetch_and_parse_subscription(url: str, sub_id: str = "manual") -> List[VpnNo
     # 1. Fetch Primary
     primary_nodes: List[VpnNode] = []
     try:
-        resp = requests.get(url, headers=headers, timeout=20)
-        if resp.headers.get("X-Hwid-Max-Devices-Reached") == "true":
+        resp = fetch_subscription_data(url, headers)
+        if resp and resp.headers.get("X-Hwid-Max-Devices-Reached") == "true":
             raise ValueError("Превышен лимит устройств для этой подписки. Освободите устройство в боте или увеличьте лимит.")
-        if resp.status_code == 200:
+        if resp and resp.status_code == 200:
             primary_nodes = parse_subscription_content(resp.text, sub_id)
     except Exception as e:
         print(f"Primary subscription fetch warning: {e}")
@@ -622,8 +640,8 @@ def fetch_and_parse_subscription(url: str, sub_id: str = "manual") -> List[VpnNo
     try:
         v2ray_headers = dict(headers)
         v2ray_headers["User-Agent"] = "v2rayNG/1.8.5"
-        resp2 = requests.get(url, headers=v2ray_headers, timeout=20)
-        if resp2.status_code == 200 and resp2.text:
+        resp2 = fetch_subscription_data(url, v2ray_headers)
+        if resp2 and resp2.status_code == 200 and resp2.text:
             secondary_nodes = parse_subscription_content(resp2.text, sub_id)
     except Exception as e:
         print(f"Secondary v2rayNG subscription fetch warning: {e}")

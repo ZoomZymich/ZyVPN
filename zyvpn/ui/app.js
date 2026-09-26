@@ -330,13 +330,13 @@ document.getElementById("btn-add-sub").addEventListener("click", async () => {
     if (val.startsWith("http://") || val.startsWith("https://")) {
       const res = await callApi("add_subscription", val);
       if (res.success) {
-        state.subscriptions.push(res.subscription);
-        state.nodes = res.nodes;
+        state.subscriptions = res.subscriptions || [...state.subscriptions, res.subscription];
+        state.nodes = res.nodes || state.nodes;
         input.value = "";
         renderSubscriptions();
         renderServers();
         renderSelectedNode();
-        alert(`Подписка успешно добавлена! Загружено серверов: ${res.nodes_count}`);
+        alert(`Подписка сохранена! Загружено серверов: ${res.nodes_count || 0}`);
       } else {
         alert(`Не удалось загрузить подписку: ${res.error}`);
       }
@@ -399,21 +399,31 @@ const connectLabel = document.getElementById("connect-btn-label");
 const headerStatus = document.getElementById("header-status");
 const statusText = document.getElementById("status-text");
 
+let isTogglingConnection = false;
 async function toggleConnection() {
-  if (state.status.status === "connected") {
-    connectBtn.className = "connect-btn";
-    connectLabel.textContent = "ОТКЛЮЧЕНИЕ...";
-    await callApi("disconnect");
-  } else {
-    connectBtn.className = "connect-btn connecting";
-    connectLabel.textContent = "ПОДКЛЮЧЕНИЕ...";
-    const selId = state.settings.selected_node_id;
-    const res = await callApi("connect", selId);
-    if (!res.success) {
-      alert(`Ошибка подключения: ${res.error}`);
+  if (isTogglingConnection) return;
+  isTogglingConnection = true;
+  connectBtn.disabled = true;
+
+  try {
+    if (state.status.status === "connected") {
+      connectBtn.className = "connect-btn";
+      connectLabel.textContent = "ОТКЛЮЧЕНИЕ...";
+      await callApi("disconnect");
+    } else {
+      connectBtn.className = "connect-btn connecting";
+      connectLabel.textContent = "ПОДКЛЮЧЕНИЕ...";
+      const selId = state.settings.selected_node_id;
+      const res = await callApi("connect", selId);
+      if (!res.success) {
+        alert(`Ошибка подключения: ${res.error}`);
+      }
     }
+    await pollStatus();
+  } finally {
+    isTogglingConnection = false;
+    connectBtn.disabled = false;
   }
-  await pollStatus();
 }
 
 connectBtn.addEventListener("click", toggleConnection);
