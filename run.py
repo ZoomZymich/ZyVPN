@@ -20,6 +20,19 @@ os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
+import zyvpn
+import zyvpn.models
+import zyvpn.paths
+import zyvpn.storage
+import zyvpn.core
+import zyvpn.api
+import zyvpn.generator
+import zyvpn.parser
+import zyvpn.tray
+import zyvpn.sysproxy
+import zyvpn.ping
+import zyvpn.countries
+
 def trim_process_memory():
     """Flush unreferenced memory pages from working set to keep RAM lean."""
     if sys.platform != "win32":

@@ -31,9 +31,12 @@ def get_data_dir() -> str:
 
 def get_ui_dir() -> str:
     """Return path to UI web assets."""
-    # Check in bundle first (PyInstaller _MEIPASS)
-    bundle_ui = os.path.join(get_bundle_dir(), "zyvpn", "ui")
-    if os.path.exists(os.path.join(bundle_ui, "index.html")):
-        return bundle_ui
-    # Fallback to local
+    for candidate in [
+        os.path.join(get_bundle_dir(), "ui"),
+        os.path.join(get_bundle_dir(), "zyvpn", "ui"),
+        os.path.join(get_base_dir(), "ui"),
+        os.path.join(get_base_dir(), "zyvpn", "ui"),
+    ]:
+        if os.path.exists(os.path.join(candidate, "index.html")):
+            return candidate
     return os.path.join(get_base_dir(), "zyvpn", "ui")

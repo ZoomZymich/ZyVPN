@@ -18,7 +18,7 @@ def build():
         pass
 
     ui_dir = os.path.join(BASE_DIR, "zyvpn", "ui")
-    add_data_arg = f"{ui_dir};zyvpn/ui"
+    add_data_arg = f"{ui_dir};ui"
     
     release_dist = os.path.join(BASE_DIR, "dist", "release")
     dist_app_dir = os.path.join(release_dist, "ZyVPN")
@@ -34,7 +34,10 @@ def build():
         f"--icon={icon_path}",
         "--name", "ZyVPN",
         f"--distpath={release_dist}",
+        f"--paths={BASE_DIR}",
         f"--add-data={add_data_arg}",
+        "--collect-all=zyvpn",
+        "--collect-all=pystray",
         "--hidden-import=bottle",
         "--hidden-import=webview",
         "--hidden-import=yaml",
