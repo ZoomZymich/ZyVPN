@@ -574,12 +574,36 @@ def parse_subscription_content(content: str, sub_id: str = "manual") -> List[Vpn
 
     return []
 
+from .hwid import get_subscription_headers
+
+def is_dummy_node(node: VpnNode) -> bool:
+    """Detect if a node is an informational dummy node (e.g. error message from VPN panel)."""
+    if node.server in ("0.0.0.0", "127.0.0.1") and node.port == 1:
+        return True
+    lower_name = node.name.lower()
+    if any(k in lower_name for k in ["не поддерживается", "передачу hwid", "превышено кол-во"]):
+        return True
+    return False
+
 def fetch_and_parse_subscription(url: str, sub_id: str = "manual") -> List[VpnNode]:
-    """Download subscription from URL and parse nodes."""
-    headers = {
-        "User-Agent": "v2rayN/7.8.2 ClashMeta/1.18.0 Sing-box/1.14.0 ZyVPN/1.0"
-    }
+    """Download subscription from URL using HWID headers and parse valid nodes."""
+    headers = get_subscription_headers()
     resp = requests.get(url, headers=headers, timeout=20)
     resp.raise_for_status()
-    text = resp.text
-    return parse_subscription_content(text, sub_id)
+
+    # Check for HWID limit headers
+    if resp.headers.get("X-Hwid-Max-Devices-Reached") == "true":
+        raise ValueError("Превышен лимит устройств для этой подписки. Освободите устройство в боте или увеличьте лимит.")
+
+    raw_nodes = parse_subscription_content(resp.text, sub_id)
+    
+    # Filter out dummy/error nodes
+    valid_nodes = [n for n in raw_nodes if not is_dummy_node(n)]
+    
+    if not valid_nodes and raw_nodes:
+        # If all nodes were dummy/error messages, report the message to user
+        msg = " ".join(n.name for n in raw_nodes)
+        raise ValueError(f"Сервер подписки вернул сообщение: {msg}")
+
+    return valid_nodes
+
