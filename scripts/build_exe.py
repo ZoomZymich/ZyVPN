@@ -9,17 +9,29 @@ PYTHON_EXE = sys.executable
 def build():
     print(f"Building ZyVPN.exe using Python: {PYTHON_EXE}...")
     
+    # Terminate any running instances so files are not locked
+    try:
+        subprocess.run(["taskkill", "/F", "/IM", "ZyVPN.exe", "/T"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["taskkill", "/F", "/IM", "xray.exe", "/T"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["taskkill", "/F", "/IM", "sing-box.exe", "/T"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
     ui_dir = os.path.join(BASE_DIR, "zyvpn", "ui")
     add_data_arg = f"{ui_dir};zyvpn/ui"
     
     release_dist = os.path.join(BASE_DIR, "dist", "release")
     dist_app_dir = os.path.join(release_dist, "ZyVPN")
     
+    icon_path = os.path.join(BASE_DIR, "zyvpn.ico")
+
     cmd = [
         PYTHON_EXE, "-m", "PyInstaller",
         "--noconfirm",
         "--onedir", # Directory build is much faster to launch and avoids temp file decompression on every start
         "--windowed", # No console window
+        "--uac-admin", # Force UAC administrator elevation on Windows launch
+        f"--icon={icon_path}",
         "--name", "ZyVPN",
         f"--distpath={release_dist}",
         f"--add-data={add_data_arg}",
@@ -29,6 +41,12 @@ def build():
         "--hidden-import=requests",
         "--hidden-import=clr_loader",
         "--hidden-import=pythonnet",
+        "--hidden-import=pystray",
+        "--hidden-import=pystray._win32",
+        "--hidden-import=PIL",
+        "--hidden-import=PIL.Image",
+        "--hidden-import=PIL.ImageDraw",
+        "--collect-all=pystray",
         os.path.join(BASE_DIR, "run.py")
     ]
     

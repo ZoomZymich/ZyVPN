@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 from .models import VpnNode, AppSettings
 
 RU_DOMAINS = [
@@ -234,15 +234,75 @@ def generate_xray_config(node: VpnNode, settings: AppSettings) -> Dict[str, Any]
     }
     return config
 
+def generate_tun_helper_config(settings: AppSettings) -> Dict[str, Any]:
+    """Generate Sing-box TUN router configuration that captures all PC traffic (TCP & UDP) into local Xray SOCKS5."""
+    dns_server = settings.dns_server or "1.1.1.1"
+
+    ru_suffixes = [
+        ".ru", ".su", ".xn--p1ai", "yandex.ru", "ya.ru", "vk.com",
+        "gosuslugi.ru", "sberbank.ru", "tinkoff.ru", "ozon.ru",
+        "wildberries.ru", "avito.ru", "mos.ru", "kinopoisk.ru",
+        "mail.ru", "dzen.ru", "rutube.ru"
+    ]
+
+    route_rules = [
+        {"action": "sniff"},
+        {"action": "hijack-dns"},
+        {"ip_is_private": True, "outbound": "direct"}
+    ]
+    dns_rules = []
+
+    if settings.routing_mode == "bypass_ru_lan":
+        route_rules.append({"domain_suffix": ru_suffixes, "outbound": "direct"})
+        dns_rules.append({"domain_suffix": ru_suffixes, "server": "local-dns"})
+
+    config = {
+        "log": {"level": "warn"},
+        "dns": {
+            "servers": [
+                {"tag": "remote-dns", "type": "tcp", "server": dns_server, "detour": "proxy"},
+                {"tag": "local-dns", "type": "udp", "server": "77.88.8.8", "detour": "direct"}
+            ],
+            "rules": dns_rules
+        },
+        "inbounds": [
+            {
+                "type": "tun",
+                "tag": "tun-in",
+                "interface_name": "zyvpn-tun",
+                "address": ["172.19.0.1/30"],
+                "auto_route": True,
+                "strict_route": False,
+                "stack": "mixed"
+            }
+        ],
+        "outbounds": [
+            {
+                "type": "socks",
+                "tag": "proxy",
+                "server": "127.0.0.1",
+                "server_port": settings.socks_port
+            },
+            {"type": "direct", "tag": "direct"}
+        ],
+        "route": {
+            "default_domain_resolver": "remote-dns",
+            "rules": route_rules,
+            "final": "proxy",
+            "auto_detect_interface": True
+        }
+    }
+    return config
+
+
 def generate_singbox_config(node: VpnNode, settings: AppSettings, enable_tun: bool = False) -> Dict[str, Any]:
-    """Generate Sing-box JSON configuration for Hysteria 2, TUIC, or TUN mode."""
+    """Generate Sing-box JSON configuration for Hysteria 2 or TUIC."""
     inbounds = [
         {
             "type": "mixed",
             "tag": "mixed-in",
             "listen": "127.0.0.1",
-            "listen_port": settings.socks_port,
-            "sniff": True
+            "listen_port": settings.socks_port
         }
     ]
 
@@ -253,9 +313,8 @@ def generate_singbox_config(node: VpnNode, settings: AppSettings, enable_tun: bo
             "interface_name": "zyvpn-tun",
             "address": ["172.19.0.1/30"],
             "auto_route": True,
-            "strict_route": True,
-            "stack": "mixed",
-            "sniff": True
+            "strict_route": False,
+            "stack": "mixed"
         })
 
     outbounds = []
@@ -297,42 +356,42 @@ def generate_singbox_config(node: VpnNode, settings: AppSettings, enable_tun: bo
                 "insecure": node.security_settings.get("allowInsecure", False)
             }
         })
-    elif node.protocol in ("vless", "vmess", "trojan", "shadowsocks"):
-        # When using Sing-box TUN to route through local Xray-core SOCKS5
-        outbounds.append({
-            "type": "socks",
-            "tag": "proxy",
-            "server": "127.0.0.1",
-            "server_port": settings.socks_port
-        })
 
     outbounds.append({"type": "direct", "tag": "direct"})
-    outbounds.append({"type": "block", "tag": "block"})
+
+    ru_suffixes = [
+        ".ru", ".su", ".xn--p1ai", "yandex.ru", "ya.ru", "vk.com",
+        "gosuslugi.ru", "sberbank.ru", "tinkoff.ru", "ozon.ru",
+        "wildberries.ru", "avito.ru", "mos.ru", "kinopoisk.ru",
+        "mail.ru", "dzen.ru", "rutube.ru"
+    ]
 
     route_rules = [
+        {"action": "sniff"},
+        {"action": "hijack-dns"},
         {"ip_is_private": True, "outbound": "direct"}
     ]
+    dns_rules = []
+
     if settings.routing_mode == "bypass_ru_lan":
-        route_rules.append({
-            "geosite": ["category-ru"],
-            "outbound": "direct"
-        })
-        route_rules.append({
-            "geoip": ["ru"],
-            "outbound": "direct"
-        })
+        route_rules.append({"domain_suffix": ru_suffixes, "outbound": "direct"})
+        dns_rules.append({"domain_suffix": ru_suffixes, "server": "local-dns"})
+
+    dns_server = settings.dns_server or "1.1.1.1"
 
     config = {
         "log": {"level": "warn"},
         "dns": {
             "servers": [
-                {"tag": "remote-dns", "address": "https://1.1.1.1/dns-query", "detour": "proxy"},
-                {"tag": "local-dns", "address": "77.88.8.8", "detour": "direct"}
-            ]
+                {"tag": "remote-dns", "type": "tcp", "server": dns_server, "detour": "proxy"},
+                {"tag": "local-dns", "type": "udp", "server": "77.88.8.8", "detour": "direct"}
+            ],
+            "rules": dns_rules
         },
         "inbounds": inbounds,
         "outbounds": outbounds,
         "route": {
+            "default_domain_resolver": "remote-dns",
             "rules": route_rules,
             "final": "proxy",
             "auto_detect_interface": True
@@ -340,9 +399,20 @@ def generate_singbox_config(node: VpnNode, settings: AppSettings, enable_tun: bo
     }
     return config
 
-def select_engine_and_generate_config(node: VpnNode, settings: AppSettings) -> Tuple[str, Dict[str, Any]]:
-    """Determine whether to run Xray or Sing-box and generate the config."""
+
+def select_engine_and_generate_config(node: VpnNode, settings: AppSettings) -> Tuple[str, Dict[str, Any], Optional[Tuple[str, Dict[str, Any]]]]:
+    """Determine primary engine + config, and optional secondary helper engine (e.g. sing-box TUN helper)."""
     if node.protocol in ("hysteria2", "tuic"):
-        return "sing-box", generate_singbox_config(node, settings, enable_tun=(settings.mode == "tun"))
+        # Sing-box natively handles Hysteria 2 / TUIC and TUN
+        cfg = generate_singbox_config(node, settings, enable_tun=(settings.mode == "tun"))
+        return "sing-box", cfg, None
     else:
-        return "xray", generate_xray_config(node, settings)
+        # Xray handles VLESS (Reality, XHTTP, Vision), VMess, Trojan, Shadowsocks
+        xray_cfg = generate_xray_config(node, settings)
+        tun_helper = None
+        if settings.mode == "tun":
+            # Sing-box runs as the TUN interface router, capturing whole-PC TCP/UDP into local Xray SOCKS5
+            tun_cfg = generate_tun_helper_config(settings)
+            tun_helper = ("sing-box", tun_cfg)
+        return "xray", xray_cfg, tun_helper
+

@@ -176,10 +176,14 @@ class VpnApi:
         self.storage = storage
         self.core = core
         self.window = None
+        self.tray = None
         self._is_maximized = False
 
     def set_window(self, window):
         self.window = window
+
+    def set_tray(self, tray):
+        self.tray = tray
 
     def window_minimize(self) -> Dict[str, Any]:
         if self.window:
@@ -205,13 +209,35 @@ class VpnApi:
         return {"success": False}
 
     def window_close(self) -> Dict[str, Any]:
+        """Minimize to tray instead of abruptly closing, keeping VPN active."""
         if self.window:
             try:
-                self.window.destroy()
-                return {"success": True}
+                self.window.hide()
+                if self.tray:
+                    self.tray.notify(
+                        "ZyVPN свёрнут в трей",
+                        "Приложение и VPN продолжают работать в фоне. Чтобы открыть — дважды кликните по иконке в трее."
+                    )
+                return {"success": True, "minimized_to_tray": True}
             except Exception as e:
-                return {"success": False, "error": str(e)}
+                try:
+                    self.window.destroy()
+                    return {"success": True}
+                except Exception:
+                    return {"success": False, "error": str(e)}
         return {"success": False}
+
+    def app_quit(self) -> Dict[str, Any]:
+        """Completely exit the application, stopping all engines and removing tray icon."""
+        try:
+            self.core.stop()
+            if self.tray:
+                self.tray.stop()
+            if self.window:
+                self.window.destroy()
+            sys.exit(0)
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def get_initial_data(self) -> Dict[str, Any]:
         return {
@@ -229,10 +255,14 @@ class VpnApi:
             return {"success": False, "error": "No VPN node selected"}
         
         ok = self.core.start(node, self.storage.settings)
+        if self.tray:
+            self.tray.update()
         return {"success": ok, "error": self.core.error_message, "status": self.core.get_status()}
 
     def disconnect(self) -> Dict[str, Any]:
         self.core.stop()
+        if self.tray:
+            self.tray.update()
         return {"success": True, "status": self.core.get_status()}
 
     def select_node(self, node_id: str) -> Dict[str, Any]:
@@ -305,6 +335,8 @@ class VpnApi:
 
     def update_settings(self, settings_dict: Dict[str, Any]) -> Dict[str, Any]:
         self.storage.update_settings(**settings_dict)
+        if self.tray:
+            self.tray.update()
         return {"success": True, "settings": self.storage.settings.to_dict()}
 
     def get_status(self) -> Dict[str, Any]:

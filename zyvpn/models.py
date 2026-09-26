@@ -49,7 +49,7 @@ class Subscription:
 
 @dataclass
 class AppSettings:
-    mode: str = "proxy"               # "tun" (full VPN) or "proxy" (system proxy)
+    mode: str = "tun"                 # "tun" (full VPN on whole PC) or "proxy" (system proxy)
     routing_mode: str = "bypass_ru_lan" # "bypass_ru_lan" (auto bypass Russian sites & LAN) or "global" (everything via VPN)
     socks_port: int = 10808
     http_port: int = 10809

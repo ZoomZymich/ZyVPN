@@ -3,3 +3,5 @@ pyyaml>=6.0.0
 requests>=2.31.0
 bottle>=0.12.25
 pythonnet>=3.0.0
+pystray>=0.19.5
+pillow>=10.0.0
