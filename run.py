@@ -63,14 +63,18 @@ def main():
     try:
         import webview
         window = webview.create_window(
-            title="ZyVPN - Universal VPN Client",
+            title="ZyVPN",
             url=os.path.join(UI_DIR, "index.html"),
             js_api=api,
-            width=800,
-            height=660,
-            min_size=(640, 500),
-            background_color="#0c1017"
+            width=840,
+            height=700,
+            min_size=(680, 520),
+            frameless=True,
+            easy_drag=True,
+            shadow=True,
+            background_color="#090d16"
         )
+        api.set_window(window)
         webview.start(gui="edgechromium", debug=False)
     except Exception as e:
         print(f"PyWebView GUI error: {e}")

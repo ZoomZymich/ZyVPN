@@ -16,7 +16,9 @@ class VpnNode:
     # For XHTTP: {"path": "/...", "host": "...", "mode": "auto", "extra": {...}}
     security: str = "none"            # none, tls, reality
     security_settings: Dict[str, Any] = field(default_factory=dict)
-    # For Reality: {"sni": "...", "pbk": "...", "sid": "...", "fp": "chrome", "spx": "..."}
+    country: str = ""                 # e.g. "Sweden"
+    country_code: str = ""            # e.g. "se"
+    flag: str = ""                    # e.g. "🇸🇪"
     flow: str = ""                    # xtls-rprx-vision
     ping_ms: Optional[int] = None
     raw_link: str = ""

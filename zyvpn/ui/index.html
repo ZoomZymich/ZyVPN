@@ -8,47 +8,67 @@
 </head>
 <body>
 
-  <!-- Top Header -->
-  <header>
-    <div class="logo-area">
-      <div class="logo-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
+  <!-- Top Integrated Titlebar (Draggable with sleek window controls) -->
+  <header class="titlebar pywebview-drag-region">
+    <div class="titlebar-left">
+      <div class="logo-area">
+        <div class="logo-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <span class="logo-text">ZyVPN</span>
       </div>
-      <div>
-        <div class="logo-text">ZyVPN</div>
+      <div id="header-status" class="header-status status-disconnected">
+        <span class="status-dot"></span>
+        <span id="status-text">Отключено</span>
       </div>
     </div>
     
-    <div id="header-status" class="header-status">
-      <div class="status-dot"></div>
-      <span id="status-text">Отключено</span>
+    <div class="titlebar-center pywebview-drag-region"></div>
+
+    <div class="window-controls no-drag">
+      <button id="win-btn-minimize" class="win-btn" title="Свернуть">
+        <svg width="10" height="10" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor"/></svg>
+      </button>
+      <button id="win-btn-maximize" class="win-btn" title="Развернуть">
+        <svg id="icon-win-max" width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+        <svg id="icon-win-restore" width="10" height="10" viewBox="0 0 10 10" style="display:none;"><path d="M2.5 0.5h7v7h-7z M0.5 2.5h7v7h-7z" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+      </button>
+      <button id="win-btn-close" class="win-btn win-close" title="Закрыть">
+        <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0.5 0.5l9 9M9.5 0.5l-9 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </button>
     </div>
   </header>
 
   <!-- Navigation Tabs -->
-  <nav>
-    <button class="tab-btn active" data-tab="dashboard">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      Главная
-    </button>
-    <button class="tab-btn" data-tab="servers">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
-      Серверы (<span id="nodes-count-tab">0</span>)
-    </button>
-    <button class="tab-btn" data-tab="subscriptions">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Подписки
-    </button>
-    <button class="tab-btn" data-tab="routing">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-      Маршрутизация
-    </button>
-    <button class="tab-btn" data-tab="logs">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-      Логи
-    </button>
+  <nav class="nav-container">
+    <div class="nav-segmented">
+      <button class="tab-btn active" data-tab="dashboard">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Главная
+      </button>
+      <button class="tab-btn" data-tab="servers">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+        Серверы <span class="tab-badge" id="nodes-count-tab">0</span>
+      </button>
+      <button class="tab-btn" data-tab="checker">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Проверка
+      </button>
+      <button class="tab-btn" data-tab="subscriptions">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Подписки
+      </button>
+      <button class="tab-btn" data-tab="routing">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+        Маршрутизация
+      </button>
+      <button class="tab-btn" data-tab="logs">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        Логи
+      </button>
+    </div>
   </nav>
 
   <!-- TAB 1: Dashboard -->
@@ -66,17 +86,41 @@
 
         <!-- Selected Node Card -->
         <div id="selected-node-trigger" class="selected-node-box">
-          <div class="node-info-main">
-            <div id="selected-node-name" class="node-title">Сервер не выбран</div>
-            <div class="node-meta">
-              <span id="selected-node-badge" class="badge badge-vless">VLESS</span>
-              <span id="selected-node-transport" class="badge badge-xhttp">XHTTP (TCP)</span>
-              <span id="selected-node-ping" class="ping-tag ping-good">- ms</span>
+          <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
+            <div id="selected-node-flag" class="node-flag-box">
+              <span class="flag-emoji">🌐</span>
+            </div>
+            <div class="node-info-main" style="min-width: 0; text-align: left;">
+              <div id="selected-node-name" class="node-title">Сервер не выбран</div>
+              <div id="selected-node-subtitle" class="node-subtitle">Выберите сервер из списка</div>
             </div>
           </div>
-          <div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+            <span id="selected-node-ping" class="ping-tag">- ms</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
+        </div>
+
+        <!-- Active IP & Location Card -->
+        <div id="ip-info-box" class="ip-info-box">
+          <div class="ip-info-left">
+            <div id="ip-flag-box" class="ip-flag-box">
+              <span id="ip-flag-emoji" class="flag-emoji">🌐</span>
+            </div>
+            <div class="ip-text-col">
+              <div class="ip-top-line">
+                <span class="ip-badge-status" id="ip-badge-status">Ваш IP</span>
+                <span id="ip-country-text" class="ip-country-text">Определение...</span>
+              </div>
+              <div class="ip-bottom-line">
+                <span id="ip-address-val" class="ip-address-val">—</span>
+                <span id="ip-city-val" class="ip-city-val"></span>
+              </div>
+            </div>
+          </div>
+          <button id="btn-refresh-ip" class="btn-refresh-ip" title="Обновить IP и геолокацию">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
         </div>
       </div>
 
@@ -119,14 +163,61 @@
   <!-- TAB 2: Servers -->
   <div id="tab-servers" class="tab-content">
     <div class="toolbar">
-      <input type="text" id="search-servers" class="search-input" placeholder="Поиск сервера по имени, протоколу, стране...">
+      <div class="search-box">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search-servers" class="search-input" placeholder="Поиск по стране, имени или протоколу...">
+      </div>
       <button id="btn-ping-all" class="btn-action">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         Пинг всех
       </button>
     </div>
 
+    <!-- Filter Pills -->
+    <div class="filter-pills" id="server-filters">
+      <button class="filter-pill active" data-filter="all">Все (<span id="count-all">0</span>)</button>
+      <button class="filter-pill highlight-xhttp" data-filter="xhttp">⚡ XHTTP (<span id="count-xhttp">0</span>)</button>
+      <button class="filter-pill" data-filter="vless">VLESS</button>
+      <button class="filter-pill" data-filter="reality">Reality</button>
+      <button class="filter-pill" data-filter="grpc">gRPC</button>
+    </div>
+
     <div id="servers-container" class="server-grid">
+      <!-- Populated dynamically -->
+    </div>
+  </div>
+
+  <!-- TAB: Blocked Services Checker -->
+  <div id="tab-checker" class="tab-content">
+    <div class="checker-banner">
+      <div class="checker-banner-info">
+        <div class="checker-banner-title">
+          <div class="checker-icon-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div>
+            <h3>Проверка сервисов в РФ</h3>
+            <p>Тестирование доступности заблокированных ресурсов через текущее подключение VPN</p>
+          </div>
+        </div>
+      </div>
+      <button id="btn-check-services" class="btn-action check-all-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span id="btn-check-services-label">Проверить все сервисы</span>
+      </button>
+    </div>
+
+    <!-- Summary status -->
+    <div id="checker-summary" class="checker-summary" style="display: none;">
+      <div class="checker-summary-left">
+        <span id="checker-summary-icon" class="summary-icon">🟢</span>
+        <span id="checker-summary-text" class="summary-text">Все сервисы доступны</span>
+      </div>
+      <span id="checker-summary-stats" class="summary-stats">8/8 доступно</span>
+    </div>
+
+    <!-- Services Grid -->
+    <div id="services-container" class="services-grid">
       <!-- Populated dynamically -->
     </div>
   </div>

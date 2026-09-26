@@ -21,13 +21,18 @@ def notify_system_proxy_change():
     except Exception as e:
         print(f"Error notifying proxy change: {e}")
 
-def enable_system_proxy(http_port: int = 10809, socks_port: int = 10808, bypass: str = "<local>;*.ru;*.su;*.xn--p1ai;*.yandex.*;*.vk.com;*.gosuslugi.ru;*.sberbank.ru;*.tinkoff.ru") -> bool:
-    """Enable Windows system proxy for HTTP and SOCKS."""
+STANDARD_BYPASS = "localhost;127.*;10.*;172.16.*;172.17.*;172.18.*;172.19.*;172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;172.28.*;172.29.*;172.30.*;172.31.*;192.168.*;<local>"
+
+def enable_system_proxy(http_port: int = 10809, socks_port: int = 10808, bypass: str = None) -> bool:
+    """Enable Windows system proxy for HTTP and HTTPS traffic."""
     try:
-        proxy_server = f"http=127.0.0.1:{http_port};https=127.0.0.1:{http_port};socks=127.0.0.1:{socks_port}"
+        proxy_server = f"127.0.0.1:{http_port}"
+        if bypass is None:
+            bypass = STANDARD_BYPASS
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_INTERNET_SETTINGS, 0, winreg.KEY_SET_VALUE) as key:
             winreg.SetValueEx(key, "ProxyEnable", 0, winreg.REG_DWORD, 1)
             winreg.SetValueEx(key, "ProxyServer", 0, winreg.REG_SZ, proxy_server)
+            winreg.SetValueEx(key, "ProxyHttp1.1", 0, winreg.REG_DWORD, 1)
             if bypass:
                 winreg.SetValueEx(key, "ProxyOverride", 0, winreg.REG_SZ, bypass)
         notify_system_proxy_change()

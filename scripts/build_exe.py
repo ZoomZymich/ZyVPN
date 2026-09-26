@@ -48,6 +48,13 @@ def build():
         shutil.copytree(src_bin_dir, dist_bin_dir)
         print("Bin directory copied.")
         
+    src_data_cfg = os.path.join(BASE_DIR, "data", "config.json")
+    dist_data_dir = os.path.join(dist_app_dir, "data")
+    if os.path.exists(src_data_cfg):
+        os.makedirs(dist_data_dir, exist_ok=True)
+        shutil.copy2(src_data_cfg, os.path.join(dist_data_dir, "config.json"))
+        print("data/config.json copied to dist/ZyVPN/data/config.json.")
+
     print("\n==========================================")
     print(" SUCCESS! ZyVPN is ready:")
     print(f" Executable: {os.path.join(dist_app_dir, 'ZyVPN.exe')}")

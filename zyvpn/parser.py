@@ -575,10 +575,22 @@ def parse_subscription_content(content: str, sub_id: str = "manual") -> List[Vpn
     return []
 
 from .hwid import get_subscription_headers
+from .countries import detect_country
+
+def enrich_node(node: VpnNode) -> VpnNode:
+    """Enrich node with country name, ISO country code, and flag emoji."""
+    if not node.country or not node.flag or not node.country_code:
+        c_name, c_code, flag_emoji, display_name = detect_country(node.name)
+        node.country = c_name
+        node.country_code = c_code
+        node.flag = flag_emoji
+        if display_name and len(display_name) >= 2:
+            node.name = display_name
+    return node
 
 def is_dummy_node(node: VpnNode) -> bool:
     """Detect if a node is an informational dummy node (e.g. error message from VPN panel)."""
-    if node.server in ("0.0.0.0", "127.0.0.1") and node.port == 1:
+    if node.server in ("0.0.0.0", "127.0.0.1") and node.port in (1, 0):
         return True
     lower_name = node.name.lower()
     if any(k in lower_name for k in ["не поддерживается", "передачу hwid", "превышено кол-во"]):
@@ -586,24 +598,70 @@ def is_dummy_node(node: VpnNode) -> bool:
     return False
 
 def fetch_and_parse_subscription(url: str, sub_id: str = "manual") -> List[VpnNode]:
-    """Download subscription from URL using HWID headers and parse valid nodes."""
+    """
+    Download subscription from URL using dual-UA technique:
+    1. Primary fetch using Clash/Meta UA (downloads structured Clash YAML).
+    2. Secondary fetch using v2rayNG UA (fetches XHTTP/VLESS Reality nodes that panels hide from Clash).
+    3. Merge both node lists, deduplicating and preferring richest transport (e.g. XHTTP).
+    """
     headers = get_subscription_headers()
-    resp = requests.get(url, headers=headers, timeout=20)
-    resp.raise_for_status()
-
-    # Check for HWID limit headers
-    if resp.headers.get("X-Hwid-Max-Devices-Reached") == "true":
-        raise ValueError("Превышен лимит устройств для этой подписки. Освободите устройство в боте или увеличьте лимит.")
-
-    raw_nodes = parse_subscription_content(resp.text, sub_id)
     
-    # Filter out dummy/error nodes
-    valid_nodes = [n for n in raw_nodes if not is_dummy_node(n)]
-    
-    if not valid_nodes and raw_nodes:
-        # If all nodes were dummy/error messages, report the message to user
-        msg = " ".join(n.name for n in raw_nodes)
-        raise ValueError(f"Сервер подписки вернул сообщение: {msg}")
+    # 1. Fetch Primary
+    primary_nodes: List[VpnNode] = []
+    try:
+        resp = requests.get(url, headers=headers, timeout=20)
+        if resp.headers.get("X-Hwid-Max-Devices-Reached") == "true":
+            raise ValueError("Превышен лимит устройств для этой подписки. Освободите устройство в боте или увеличьте лимит.")
+        if resp.status_code == 200:
+            primary_nodes = parse_subscription_content(resp.text, sub_id)
+    except Exception as e:
+        print(f"Primary subscription fetch warning: {e}")
 
-    return valid_nodes
+    # 2. Fetch Secondary (v2rayNG UA - discovers XHTTP and native VLESS endpoints)
+    secondary_nodes: List[VpnNode] = []
+    try:
+        v2ray_headers = dict(headers)
+        v2ray_headers["User-Agent"] = "v2rayNG/1.8.5"
+        resp2 = requests.get(url, headers=v2ray_headers, timeout=20)
+        if resp2.status_code == 200 and resp2.text:
+            secondary_nodes = parse_subscription_content(resp2.text, sub_id)
+    except Exception as e:
+        print(f"Secondary v2rayNG subscription fetch warning: {e}")
+
+    # 3. Merge intelligently
+    combined_nodes: List[VpnNode] = []
+    seen_keys = set()
+
+    def get_node_key(n: VpnNode) -> str:
+        # Key by server:port:uuid, or server:port:transport
+        return f"{n.server.strip().lower()}:{n.port}:{n.transport.lower()}"
+
+    # If secondary returned richer nodes (especially XHTTP nodes), prioritize them
+    for n in secondary_nodes:
+        if not is_dummy_node(n):
+            key = get_node_key(n)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                combined_nodes.append(enrich_node(n))
+
+    # Add any primary nodes not already covered
+    for n in primary_nodes:
+        if not is_dummy_node(n):
+            key = get_node_key(n)
+            # Also check if same server:port was added with tcp instead of xhttp
+            server_port_key = f"{n.server.strip().lower()}:{n.port}"
+            existing_servers = [k.split(":", 2)[0] + ":" + k.split(":", 2)[1] for k in seen_keys if ":" in k]
+            if key not in seen_keys and server_port_key not in existing_servers:
+                seen_keys.add(key)
+                combined_nodes.append(enrich_node(n))
+
+    # If combined is empty, check if all nodes were dummy/error messages
+    if not combined_nodes:
+        all_raw = primary_nodes + secondary_nodes
+        if all_raw:
+            msg = " ".join(n.name for n in all_raw if n.name)
+            raise ValueError(f"Сервер подписки вернул сообщение: {msg}")
+        raise ValueError("Не удалось получить серверы из подписки. Проверьте ссылку и доступность интернета.")
+
+    return combined_nodes
 

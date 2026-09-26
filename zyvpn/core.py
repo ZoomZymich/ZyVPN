@@ -93,9 +93,8 @@ class CoreController:
 
             # Apply System Mode
             if settings.mode == "proxy":
-                self.log(f"Configuring Windows System Proxy (HTTP: {settings.http_port}, SOCKS: {settings.socks_port})...")
-                bypass_list = "<local>;*.ru;*.su;*.xn--p1ai;*.yandex.*;*.vk.com;*.gosuslugi.ru;*.sberbank.ru;*.tinkoff.ru" if settings.routing_mode == "bypass_ru_lan" else "<local>"
-                enable_system_proxy(http_port=settings.http_port, socks_port=settings.socks_port, bypass=bypass_list)
+                self.log(f"Configuring Windows System Proxy (HTTP: {settings.http_port})...")
+                enable_system_proxy(http_port=settings.http_port, socks_port=settings.socks_port)
             elif settings.mode == "tun":
                 self.log("TUN mode enabled.")
 

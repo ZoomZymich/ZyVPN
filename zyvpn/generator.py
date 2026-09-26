@@ -178,7 +178,7 @@ def generate_xray_config(node: VpnNode, settings: AppSettings) -> Dict[str, Any]
             "tag": "direct",
             "protocol": "freedom",
             "settings": {
-                "domainStrategy": "UseIP"
+                "domainStrategy": "AsIs"
             }
         },
         {
@@ -225,17 +225,10 @@ def generate_xray_config(node: VpnNode, settings: AppSettings) -> Dict[str, Any]
         "log": {
             "loglevel": "warning"
         },
-        "dns": {
-            "servers": [
-                settings.dns_server,
-                "8.8.8.8",
-                "localhost"
-            ]
-        },
         "inbounds": inbounds,
         "outbounds": outbounds,
         "routing": {
-            "domainStrategy": "IPIfNonMatch",
+            "domainStrategy": "AsIs",
             "rules": routing_rules
         }
     }

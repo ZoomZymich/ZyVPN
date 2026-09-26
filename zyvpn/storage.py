@@ -74,9 +74,11 @@ class Storage:
 
     def import_text(self, text: str) -> int:
         """Import nodes from text (can be single link or multi-line base64 / YAML)."""
+        from .parser import enrich_node
         nodes = parse_subscription_content(text, sub_id="manual")
         count = 0
         for n in nodes:
+            n = enrich_node(n)
             # avoid exact duplicates
             if not any(existing.server == n.server and existing.port == n.port and existing.uuid == n.uuid for existing in self.nodes):
                 self.nodes.append(n)
