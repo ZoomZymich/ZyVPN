@@ -5,6 +5,7 @@ __pycache__/
 
 # User runtime data & logs
 data/run/
+data/*.json
 *.log
 
 # Heavy compiled binaries (auto-downloaded via scripts/download_binaries.py)
@@ -21,3 +22,10 @@ env/
 # Editor files
 .vscode/
 .idea/
+
+# PyInstaller build outputs
+build/
+dist/
+*.spec
+*.lnk
+

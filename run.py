@@ -11,6 +11,7 @@ sys.path.insert(0, BASE_DIR)
 from zyvpn.storage import Storage
 from zyvpn.core import CoreController
 from zyvpn.api import VpnApi
+from zyvpn.paths import get_ui_dir
 
 storage = Storage()
 core = CoreController()
@@ -18,7 +19,7 @@ api = VpnApi(storage, core)
 
 # Lightweight Bottle Web Server for UI assets and HTTP API fallback
 server = Bottle()
-UI_DIR = os.path.join(BASE_DIR, "zyvpn", "ui")
+UI_DIR = get_ui_dir()
 
 @server.route("/")
 def index():

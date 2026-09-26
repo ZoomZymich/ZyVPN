@@ -4,24 +4,23 @@ import time
 from typing import List, Optional, Dict, Any
 from .models import VpnNode, Subscription, AppSettings
 from .parser import fetch_and_parse_subscription, parse_single_link, parse_subscription_content
-
-DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
-CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
+from .paths import get_data_dir
 
 class Storage:
     def __init__(self):
-        os.makedirs(DATA_DIR, exist_ok=True)
+        self.data_dir = get_data_dir()
+        self.config_file = os.path.join(self.data_dir, "config.json")
         self.settings: AppSettings = AppSettings()
         self.subscriptions: List[Subscription] = []
         self.nodes: List[VpnNode] = []
         self.load()
 
     def load(self):
-        if not os.path.exists(CONFIG_FILE):
+        if not os.path.exists(self.config_file):
             self.save()
             return
         try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            with open(self.config_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             self.settings = AppSettings.from_dict(data.get("settings", {}))
             self.subscriptions = [Subscription.from_dict(s) for s in data.get("subscriptions", [])]
@@ -35,7 +34,7 @@ class Storage:
             "subscriptions": [s.to_dict() for s in self.subscriptions],
             "nodes": [n.to_dict() for n in self.nodes]
         }
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     def add_subscription(self, url: str, name: Optional[str] = None) -> Subscription:

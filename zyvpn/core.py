@@ -9,15 +9,15 @@ from typing import Optional, List, Dict, Any, Tuple
 from .models import VpnNode, AppSettings
 from .generator import select_engine_and_generate_config, generate_singbox_config, generate_xray_config
 from .sysproxy import enable_system_proxy, disable_system_proxy
-
-BIN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "bin"))
-RUN_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "run"))
+from .paths import get_bin_dir, get_data_dir
 
 CREATE_NO_WINDOW = 0x08000000
 
 class CoreController:
     def __init__(self):
-        os.makedirs(RUN_DIR, exist_ok=True)
+        self.bin_dir = get_bin_dir()
+        self.run_dir = os.path.join(get_data_dir(), "run")
+        os.makedirs(self.run_dir, exist_ok=True)
         self.primary_process: Optional[subprocess.Popen] = None
         self.secondary_process: Optional[subprocess.Popen] = None # For TUN helper if needed
         self.status: str = "disconnected" # "disconnected", "connecting", "connected", "error"
@@ -57,15 +57,15 @@ class CoreController:
             engine_name, config_dict = select_engine_and_generate_config(node, settings)
             self.log(f"Preparing connection to '{node.name}' via {node.protocol.upper()} ({node.transport.upper()}) using {engine_name.upper()}...")
             
-            cfg_path = os.path.join(RUN_DIR, f"{engine_name}_config.json")
+            cfg_path = os.path.join(self.run_dir, f"{engine_name}_config.json")
             with open(cfg_path, "w", encoding="utf-8") as f:
                 json.dump(config_dict, f, indent=2, ensure_ascii=False)
 
             if engine_name == "xray":
-                exe_path = os.path.join(BIN_DIR, "xray.exe")
+                exe_path = os.path.join(self.bin_dir, "xray.exe")
                 cmd = [exe_path, "run", "-config", cfg_path]
             else:
-                exe_path = os.path.join(BIN_DIR, "sing-box.exe")
+                exe_path = os.path.join(self.bin_dir, "sing-box.exe")
                 cmd = [exe_path, "run", "-c", cfg_path]
 
             if not os.path.exists(exe_path):
@@ -74,7 +74,7 @@ class CoreController:
             self.log(f"Launching engine: {os.path.basename(exe_path)}")
             self.primary_process = subprocess.Popen(
                 cmd,
-                cwd=BIN_DIR,
+                cwd=self.bin_dir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
