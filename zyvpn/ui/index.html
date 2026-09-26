@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZyVPN - Universal VPN Client</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="logo-area">
+      <div class="logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">ZyVPN</div>
+      </div>
+    </div>
+    
+    <div id="header-status" class="header-status">
+      <div class="status-dot"></div>
+      <span id="status-text">Отключено</span>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav>
+    <button class="tab-btn active" data-tab="dashboard">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Главная
+    </button>
+    <button class="tab-btn" data-tab="servers">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+      Серверы (<span id="nodes-count-tab">0</span>)
+    </button>
+    <button class="tab-btn" data-tab="subscriptions">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Подписки
+    </button>
+    <button class="tab-btn" data-tab="routing">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+      Маршрутизация
+    </button>
+    <button class="tab-btn" data-tab="logs">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      Логи
+    </button>
+  </nav>
+
+  <!-- TAB 1: Dashboard -->
+  <div id="tab-dashboard" class="tab-content active">
+    <div class="dashboard-grid">
+      
+      <div class="hero-card">
+        <button id="main-connect-btn" class="connect-btn">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+            <line x1="12" y1="2" x2="12" y2="12"/>
+          </svg>
+          <span id="connect-btn-label">ПОДКЛЮЧИТЬ</span>
+        </button>
+
+        <!-- Selected Node Card -->
+        <div id="selected-node-trigger" class="selected-node-box">
+          <div class="node-info-main">
+            <div id="selected-node-name" class="node-title">Сервер не выбран</div>
+            <div class="node-meta">
+              <span id="selected-node-badge" class="badge badge-vless">VLESS</span>
+              <span id="selected-node-transport" class="badge badge-xhttp">XHTTP (TCP)</span>
+              <span id="selected-node-ping" class="ping-tag ping-good">- ms</span>
+            </div>
+          </div>
+          <div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Toggles -->
+      <div class="controls-card">
+        <div class="control-row">
+          <div class="control-label-area">
+            <h4>Авто-маршрутизация (Обход РФ и LAN)</h4>
+            <p>Сайты РФ (Госуслуги, банки, VK, Ozon) и локальная сеть идут напрямую, всё остальное — через VPN</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-routing" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <div class="control-label-area">
+            <h4>Режим туннеля (TUN / Wintun)</h4>
+            <p>Перехватывать весь системный трафик Windows (игры, Discord, службы). Если выключено — системный прокси</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-tun">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="control-row" style="border-top: 1px solid var(--border-color); padding-top: 12px;">
+          <div class="control-label-area">
+            <h4>Время подключения</h4>
+            <p id="uptime-display">00:00:00</p>
+          </div>
+          <button id="btn-quick-ping" class="btn-icon">⚡ Тест задержки</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TAB 2: Servers -->
+  <div id="tab-servers" class="tab-content">
+    <div class="toolbar">
+      <input type="text" id="search-servers" class="search-input" placeholder="Поиск сервера по имени, протоколу, стране...">
+      <button id="btn-ping-all" class="btn-action">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Пинг всех
+      </button>
+    </div>
+
+    <div id="servers-container" class="server-grid">
+      <!-- Populated dynamically -->
+    </div>
+  </div>
+
+  <!-- TAB 3: Subscriptions -->
+  <div id="tab-subscriptions" class="tab-content">
+    <div class="controls-card">
+      <h3 style="margin-bottom: 12px; font-size: 16px;">Добавить подписку или ссылку</h3>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <input type="text" id="sub-url-input" class="search-input" placeholder="Вставьте ссылку на подписку (Base64 / Clash / Sing-box) или одиночный vless://...">
+        <button id="btn-add-sub" class="btn-action">Добавить</button>
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted);">
+        Поддерживаются любые подписки: VLESS Reality, XHTTP over TCP, VMess, Trojan, Shadowsocks, Hysteria 2, TUIC, а также ссылки Clash Meta YAML.
+      </div>
+    </div>
+
+    <h3 style="font-size: 16px; margin-top: 10px;">Мои подписки</h3>
+    <div id="subs-container" style="display: flex; flex-direction: column; gap: 10px;">
+      <!-- Populated dynamically -->
+    </div>
+  </div>
+
+  <!-- TAB 4: Routing Rules -->
+  <div id="tab-routing" class="tab-content">
+    <div class="controls-card">
+      <h3 style="font-size: 16px; margin-bottom: 12px;">Настройки маршрутизации</h3>
+      
+      <div class="control-row">
+        <div class="control-label-area">
+          <h4>Режим маршрутизации</h4>
+          <p>Выберите, как распределять трафик</p>
+        </div>
+        <select id="select-routing-mode" class="search-input" style="max-width: 260px;">
+          <option value="bypass_ru_lan">Обход РФ и LAN (Рекомендуется)</option>
+          <option value="global">Весь трафик через VPN (Global)</option>
+        </select>
+      </div>
+
+      <div class="control-row" style="margin-top: 12px;">
+        <div class="control-label-area">
+          <h4>DNS Сервер для защищенных запросов</h4>
+          <p>Предотвращает утечки DNS (DNS Leaks)</p>
+        </div>
+        <select id="select-dns" class="search-input" style="max-width: 260px;">
+          <option value="1.1.1.1">Cloudflare DNS (1.1.1.1)</option>
+          <option value="8.8.8.8">Google DNS (8.8.8.8)</option>
+          <option value="77.88.8.8">Yandex DNS (77.88.8.8)</option>
+        </select>
+      </div>
+
+      <div style="margin-top: 16px; padding: 14px; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+        <b>Как работает авто-маршрутизация в ZyVPN:</b>
+        <br>• Домены <code>.ru</code>, <code>.su</code>, <code>.рф</code>, Госуслуги, Сбер, Т-Банк, Яндекс, VK, Кинопоиск и российские IP-адреса направляются напрямую через вашего интернет-провайдера на максимальной скорости.
+        <br>• Все заблокированные ресурсы, YouTube, соцсети и зарубежные сайты прозрачно проходят через выбранный VPN сервер и протокол (включая XHTTP).
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: Logs -->
+  <div id="tab-logs" class="tab-content">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h3 style="font-size: 16px;">Логи сетевого ядра</h3>
+      <button id="btn-clear-logs" class="btn-icon">Очистить</button>
+    </div>
+    <div id="logs-container" class="logs-console">Ожидание подключения...</div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

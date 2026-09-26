@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# User runtime data & logs
+data/run/
+*.log
+
+# Heavy compiled binaries (auto-downloaded via scripts/download_binaries.py)
+bin/*.exe
+bin/*.dat
+bin/*.dll
+bin/*.zip
+
+# Python virtual environment
+venv/
+.venv/
+env/
+
+# Editor files
+.vscode/
+.idea/
