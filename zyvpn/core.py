@@ -232,27 +232,26 @@ class CoreController:
                             raise RuntimeError(f"TUN router: {err_detail}")
                         else:
                             raise RuntimeError(f"TUN router exited with code {ret}")
+                # Apply System Mode
+                if settings.mode == "proxy":
+                    self.log(f"Configuring Windows System Proxy (HTTP: {settings.http_port})...")
+                    enable_system_proxy(http_port=settings.http_port, socks_port=settings.socks_port)
+                elif settings.mode == "tun":
+                    # TUN handles all PC traffic (TCP & UDP) at the network adapter level
+                    disable_system_proxy()
+                    self.log("TUN mode active: all PC traffic (TCP & UDP, Discord Voice) routed via VPN adapter.")
 
-            # Apply System Mode
-            if settings.mode == "proxy":
-                self.log(f"Configuring Windows System Proxy (HTTP: {settings.http_port})...")
-                enable_system_proxy(http_port=settings.http_port, socks_port=settings.socks_port)
-            elif settings.mode == "tun":
-                # TUN handles all PC traffic (TCP & UDP) at the network adapter level
-                disable_system_proxy()
-                self.log("TUN mode active: all PC traffic (TCP & UDP, Discord Voice) routed via VPN adapter.")
+                self.status = "connected"
+                self.start_time = time.time()
+                self.log(f"Successfully connected to {node.name}!")
+                return True
 
-            self.status = "connected"
-            self.start_time = time.time()
-            self.log(f"Successfully connected to {node.name}!")
-            return True
-
-        except Exception as e:
-            self.log(f"Connection failed: {e}", level="error")
-            self.status = "error"
-            self.error_message = str(e)
-            self.stop()
-            return False
+            except Exception as e:
+                self.log(f"Connection failed: {e}", level="error")
+                self.status = "error"
+                self.error_message = str(e)
+                self.stop()
+                return False
 
     def stop(self):
         self.log("Disconnecting...")
