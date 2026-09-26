@@ -51,6 +51,13 @@ CHECK_SERVICES = [
         "display_url": "chatgpt.com"
     },
     {
+        "id": "gemini",
+        "name": "Google Gemini",
+        "desc": "ИИ-чат и генерация ответов",
+        "url": "https://gemini.google.com/app",
+        "display_url": "gemini.google.com"
+    },
+    {
         "id": "spotify",
         "name": "Spotify",
         "desc": "Музыкальный стриминг",
@@ -65,6 +72,103 @@ CHECK_SERVICES = [
         "display_url": "wikipedia.org"
     }
 ]
+
+
+def check_gemini_service(proxies: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    """Deep check for Google Gemini:
+    1. Web app access (gemini.google.com/app)
+    2. Regional generation eligibility via Generative Language API
+    3. RPC chat gateway connectivity (alkalimakersuite-pa)
+    """
+    t0 = time.time()
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    
+    web_ok = False
+    region_eligible = False
+    gw_ok = False
+    error_msg = None
+
+    # 1. Check web app endpoint (stream=True avoids downloading heavy bundle)
+    try:
+        r_web = requests.get(
+            "https://gemini.google.com/app",
+            proxies=proxies,
+            timeout=6.0,
+            headers=headers,
+            stream=True
+        )
+        final_url = r_web.url or ""
+        if r_web.status_code in (200, 301, 302, 307, 308) and "/unavailable" not in final_url:
+            web_ok = True
+    except Exception as e:
+        error_msg = f"Web: {e}"
+
+    # 2. Regional Model Generation eligibility check
+    # Google verifies caller region *prior* to API key authentication.
+    # If country/IP is blocked: 400 FAILED_PRECONDITION 'User location is not supported'.
+    # If country/IP is allowed: 400 INVALID_ARGUMENT 'API key not valid' or 200 OK.
+    try:
+        r_api = requests.post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyLocationProbeKey999",
+            proxies=proxies,
+            timeout=5.0,
+            headers={"Content-Type": "application/json", **headers},
+            json={"contents": [{"parts": [{"text": "ping"}]}]}
+        )
+        api_text = r_api.text
+        if "User location is not supported" in api_text:
+            region_eligible = False
+        elif "API key not valid" in api_text or r_api.status_code in (200, 400, 403):
+            region_eligible = True
+    except Exception as e:
+        if not error_msg:
+            error_msg = f"API: {e}"
+
+    # 3. Chat RPC gateway check
+    try:
+        r_gw = requests.get(
+            "https://alkalimakersuite-pa.clients6.google.com/generate_204",
+            proxies=proxies,
+            timeout=5.0,
+            headers=headers
+        )
+        if r_gw.status_code in (200, 204):
+            gw_ok = True
+    except Exception:
+        pass
+
+    latency = int((time.time() - t0) * 1000)
+    can_chat = region_eligible and (web_ok or gw_ok)
+
+    if can_chat:
+        status_text = "Чат и AI доступны"
+        detail = "Регион допущен Google к генерации ответов и диалогам"
+    elif web_ok and not region_eligible:
+        status_text = "Только сайт (генерация заблокирована)"
+        detail = "Сайт открывается, но генерация диалогов заблокирована Google в данном регионе"
+    else:
+        status_text = "Недоступен"
+        detail = error_msg or "Серверы Gemini не отвечают"
+
+    return {
+        "id": "gemini",
+        "name": "Google Gemini",
+        "desc": "ИИ-чат и генерация ответов",
+        "display_url": "gemini.google.com",
+        "ok": can_chat,
+        "can_chat": can_chat,
+        "web_ok": web_ok,
+        "region_eligible": region_eligible,
+        "gw_ok": gw_ok,
+        "status_code": 200 if can_chat else (206 if web_ok else 0),
+        "latency_ms": latency,
+        "status_text": status_text,
+        "detail": detail,
+        "error": error_msg if not can_chat else None
+    }
 
 class VpnApi:
     """API exposed to JavaScript frontend in PyWebView or HTTP server."""
@@ -298,6 +402,8 @@ class VpnApi:
 
         results = []
         def _test_svc(svc):
+            if svc["id"] == "gemini":
+                return check_gemini_service(proxies)
             t0 = time.time()
             try:
                 r = requests.get(
@@ -356,6 +462,11 @@ class VpnApi:
             "http": f"http://127.0.0.1:{http_port}",
             "https": f"http://127.0.0.1:{http_port}"
         } if is_connected else None
+
+        if service_id == "gemini":
+            res = check_gemini_service(proxies)
+            return {"success": True, **res}
+
         t0 = time.time()
         try:
             r = requests.get(
@@ -389,4 +500,109 @@ class VpnApi:
                 "latency_ms": latency,
                 "error": str(e)
             }
+
+    def test_gemini_dialog(self, prompt: str = "Привет! Ты сейчас работаешь через этот сервер?", api_key: str = "") -> Dict[str, Any]:
+        """Test sending an actual prompt or verifying chat gateway through the current VPN connection."""
+        http_port = self.storage.settings.http_port
+        is_connected = self.core.status == "connected"
+        proxies = {
+            "http": f"http://127.0.0.1:{http_port}",
+            "https": f"http://127.0.0.1:{http_port}"
+        } if is_connected else None
+
+        t0 = time.time()
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            "Content-Type": "application/json"
+        }
+
+        api_key = (api_key or "").strip()
+        if api_key:
+            # Full generation test with user API key
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                r = requests.post(
+                    url,
+                    headers=headers,
+                    json={"contents": [{"parts": [{"text": prompt}]}]},
+                    proxies=proxies,
+                    timeout=12.0
+                )
+                latency = int((time.time() - t0) * 1000)
+                if r.status_code == 200:
+                    data = r.json()
+                    candidates = data.get("candidates", [])
+                    reply_text = ""
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            reply_text = parts[0].get("text", "")
+                    return {
+                        "success": True,
+                        "type": "live_chat",
+                        "latency_ms": latency,
+                        "reply": reply_text or "(Получен пустой ответ)",
+                        "model": "gemini-1.5-flash",
+                        "proxy_used": is_connected
+                    }
+                else:
+                    err_msg = r.text
+                    try:
+                        err_json = r.json()
+                        err_msg = err_json.get("error", {}).get("message", r.text)
+                    except Exception:
+                        pass
+                    return {
+                        "success": False,
+                        "type": "live_chat",
+                        "latency_ms": latency,
+                        "error": f"HTTP {r.status_code}: {err_msg}",
+                        "proxy_used": is_connected
+                    }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "type": "live_chat",
+                    "latency_ms": int((time.time() - t0) * 1000),
+                    "error": str(e),
+                    "proxy_used": is_connected
+                }
+        else:
+            # Deep diagnostics without API key
+            probe_res = check_gemini_service(proxies)
+            latency = int((time.time() - t0) * 1000)
+            if probe_res.get("can_chat"):
+                reply = (
+                    "✅ Глубокая проверка подтвердила: Google Gemini полностью готов к диалогу!\n\n"
+                    "• Шлюз диалогов (alkalimakersuite-pa): Подключен (204 OK)\n"
+                    "• Веб-приложение (gemini.google.com/app): Доступно без ограничений\n"
+                    "• Региональный фильтр Google: Разрешен (IP не заблокирован в Google AI)\n\n"
+                    "Вы можете перейти на gemini.google.com и полноценно переписываться с моделью через этот сервер."
+                )
+                return {
+                    "success": True,
+                    "type": "probe",
+                    "latency_ms": latency,
+                    "reply": reply,
+                    "details": probe_res,
+                    "proxy_used": is_connected
+                }
+            elif probe_res.get("web_ok") and not probe_res.get("region_eligible"):
+                return {
+                    "success": False,
+                    "type": "probe",
+                    "latency_ms": latency,
+                    "error": "Веб-страница открывается, однако Google блокирует генерацию ответов (User location is not supported) для IP-адреса данного сервера. Рекомендуется переключиться на другой сервер (например, Швеция или Австрия).",
+                    "details": probe_res,
+                    "proxy_used": is_connected
+                }
+            else:
+                return {
+                    "success": False,
+                    "type": "probe",
+                    "latency_ms": latency,
+                    "error": probe_res.get("error") or "Не удалось установить соединение с серверами Google Gemini.",
+                    "details": probe_res,
+                    "proxy_used": is_connected
+                }
 

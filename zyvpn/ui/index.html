@@ -286,6 +286,68 @@
     <div id="logs-container" class="logs-console">Ожидание подключения...</div>
   </div>
 
+  <!-- Modal: Test Gemini Dialogue -->
+  <div id="modal-gemini-test" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="gemini-icon-circle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C12 7.523 7.523 12 2 12C7.523 12 12 16.477 12 22C12 16.477 16.477 12 22 12C16.477 12 12 7.523 12 2Z" fill="url(#gemini-grad-modal)"/>
+              <defs>
+                <linearGradient id="gemini-grad-modal" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#4E82EE"/>
+                  <stop offset="0.5" stop-color="#9B72CB"/>
+                  <stop offset="1" stop-color="#D96570"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <div>
+            <h3 class="modal-title">Тестирование диалога Google Gemini</h3>
+            <p class="modal-subtitle">Проверка отправки сообщений и генерации через сервер VPN</p>
+          </div>
+        </div>
+        <button id="btn-close-gemini-modal" class="btn-modal-close" title="Закрыть">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="gemini-diag-panel" id="gemini-modal-diag">
+          <!-- Diagnostics rendered dynamically -->
+        </div>
+
+        <div class="gemini-field-group">
+          <label class="gemini-field-label">Тестовое сообщение / вопрос для модели:</label>
+          <textarea id="gemini-test-prompt" class="gemini-input-textarea" rows="2" placeholder="Введите фразу...">Привет! Напиши кратко, ты сейчас работаешь через этот VPN сервер?</textarea>
+        </div>
+
+        <div class="gemini-field-group">
+          <label class="gemini-field-label">
+            Google Gemini API Key 
+            <span class="label-hint">(Необязательно — без ключа проверяются региональные шлюзы и API генерации):</span>
+          </label>
+          <input type="password" id="gemini-test-key" class="search-input" placeholder="AIzaSy... (оставьте пустым для авто-проверки)">
+        </div>
+
+        <div id="gemini-test-result-box" class="gemini-result-box" style="display: none;">
+          <div class="gemini-result-header">
+            <span id="gemini-result-status-title">Результат:</span>
+            <span id="gemini-result-time" class="ping-tag ping-good"></span>
+          </div>
+          <div id="gemini-result-content" class="gemini-result-content"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-close-gemini-footer" class="btn-secondary">Закрыть</button>
+        <button id="btn-run-gemini-test" class="btn-action">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span id="btn-run-gemini-label">Отправить / Проверить</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

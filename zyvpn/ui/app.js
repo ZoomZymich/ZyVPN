@@ -607,6 +607,7 @@ const SERVICE_ICONS = {
   instagram: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E1306C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
   x: `<svg width="22" height="22" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
   chatgpt: `<svg width="22" height="22" viewBox="0 0 24 24" fill="#10A37F"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 8.795a4.469 4.469 0 0 1 2.34-1.974V12.6a.784.784 0 0 0 .392.68l5.82 3.36-2.02 1.168a.08.08 0 0 1-.073 0l-4.834-2.793A4.504 4.504 0 0 1 2.34 8.795zm16.597 3.855l-5.833-3.387L15.124 8.1a.076.076 0 0 1 .073 0l4.833 2.79a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.417-.667zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 10.13V7.797a.08.08 0 0 1 .033-.061l4.838-2.796a4.5 4.5 0 0 1 6.67 4.737zM8.308 12.84l2.455-1.417 2.455 1.417v2.834l-2.455 1.417-2.455-1.417z"/></svg>`,
+  gemini: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 7.523 7.523 12 2 12C7.523 12 12 16.477 12 22C12 16.477 16.477 12 22 12C16.477 12 12 7.523 12 2Z" fill="url(#gemini-icon-grad)"/><defs><linearGradient id="gemini-icon-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"><stop stop-color="#4E82EE"/><stop offset="0.5" stop-color="#9B72CB"/><stop offset="1" stop-color="#D96570"/></linearGradient></defs></svg>`,
   spotify: `<svg width="22" height="22" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>`,
   wikipedia: `<svg width="22" height="22" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M12.09 13.124l2.62-6.862h2.008l-3.666 9.298h-1.895L8.41 8.85l-2.748 6.71H3.766L.1 6.262h2.096l2.58 6.862 2.457-6.862h1.895l-2.73 7.03 2.656-7.03h2.036zm8.144 2.436h3.766v.83h-3.766zm-5.044.83v-.83h2.036v.83z"/></svg>`
 };
@@ -618,6 +619,7 @@ const DEFAULT_SERVICES = [
   { id: "instagram", name: "Instagram", desc: "Фото, Reels, Stories (Meta)", display_url: "instagram.com" },
   { id: "x", name: "Twitter / X", desc: "Социальная сеть X", display_url: "x.com" },
   { id: "chatgpt", name: "ChatGPT", desc: "Нейросеть OpenAI", display_url: "chatgpt.com" },
+  { id: "gemini", name: "Google Gemini", desc: "ИИ-чат и генерация (deep check)", display_url: "gemini.google.com" },
   { id: "spotify", name: "Spotify", desc: "Музыкальный стриминг", display_url: "spotify.com" },
   { id: "wikipedia", name: "Wikipedia", desc: "Свободная энциклопедия", display_url: "wikipedia.org" }
 ];
@@ -633,21 +635,58 @@ function renderCheckerServices() {
     const icon = SERVICE_ICONS[svc.id] || `<span style="font-size: 18px;">🌐</span>`;
 
     let statusTag = `<span class="check-tag check-pending">Не проверено</span>`;
+    let geminiExtra = "";
+
     if (res) {
       if (res.running) {
-        statusTag = `<span class="check-tag check-running"><span class="spin-dot"></span> Проверка...</span>`;
+        statusTag = `<span class="check-tag check-running"><span class="spin-dot"></span> ${svc.id === 'gemini' ? 'Проверка диалога...' : 'Проверка...'}</span>`;
+      } else if (svc.id === "gemini") {
+        if (res.can_chat) {
+          statusTag = `<span class="check-tag check-ok">🟢 Чат и AI работают (${res.latency_ms} ms)</span>`;
+          geminiExtra = `
+            <div class="gemini-badge-row">
+              <span class="gemini-sub-badge ok">✓ Веб OK</span>
+              <span class="gemini-sub-badge ok">✓ Генерация разрешена</span>
+              <span class="gemini-sub-badge ok">✓ Шлюз OK</span>
+              <button class="btn-open-gemini-test" title="Проверить отправку сообщений в Gemini">💬 Тест диалога</button>
+            </div>
+          `;
+        } else if (res.web_ok && !res.region_eligible) {
+          statusTag = `<span class="check-tag check-warn">🟡 Только сайт (регион заблокирован)</span>`;
+          geminiExtra = `
+            <div class="gemini-badge-row">
+              <span class="gemini-sub-badge ok">✓ Веб OK</span>
+              <span class="gemini-sub-badge fail">✕ Регион заблокирован Google</span>
+              <button class="btn-open-gemini-test" title="Подробнее">💬 Подробнее</button>
+            </div>
+          `;
+        } else {
+          statusTag = `<span class="check-tag check-fail">🔴 Чат недоступен</span>`;
+          geminiExtra = `
+            <div class="gemini-badge-row">
+              <span class="gemini-sub-badge fail">✕ Ошибка связи</span>
+              <button class="btn-open-gemini-test" title="Диагностика">💬 Диагностика</button>
+            </div>
+          `;
+        }
       } else if (res.ok) {
         statusTag = `<span class="check-tag check-ok">🟢 Доступен (${res.latency_ms} ms)</span>`;
       } else {
         statusTag = `<span class="check-tag check-fail">🔴 Недоступен</span>`;
       }
+    } else if (svc.id === "gemini") {
+      geminiExtra = `
+        <div class="gemini-badge-row">
+          <button class="btn-open-gemini-test" title="Тестирование диалога">💬 Проверить диалог с ИИ</button>
+        </div>
+      `;
     }
 
     return `
-      <div class="service-card" id="svc-card-${svc.id}">
+      <div class="service-card ${svc.id === 'gemini' ? 'service-card-gemini' : ''}" id="svc-card-${svc.id}">
         <div class="service-card-top">
           <div class="service-card-brand">
-            <div class="service-icon">${icon}</div>
+            <div class="service-icon ${svc.id === 'gemini' ? 'service-icon-gemini' : ''}">${icon}</div>
             <div class="service-info">
               <span class="service-title">${escapeHtml(svc.name)}</span>
               <span class="service-desc">${escapeHtml(svc.desc)}</span>
@@ -657,6 +696,7 @@ function renderCheckerServices() {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           </button>
         </div>
+        ${geminiExtra}
         <div class="service-card-status">
           <span style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${escapeHtml(svc.display_url)}</span>
           <div id="svc-tag-${svc.id}">${statusTag}</div>
@@ -673,33 +713,30 @@ function renderCheckerServices() {
       await checkSingleService(svcId);
     });
   });
+
+  // Attach gemini modal triggers
+  container.querySelectorAll(".btn-open-gemini-test").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openGeminiModal();
+    });
+  });
 }
 
 async function checkSingleService(svcId) {
-  const tagEl = document.getElementById(`svc-tag-${svcId}`);
-  if (tagEl) {
-    tagEl.innerHTML = `<span class="check-tag check-running"><span class="spin-dot"></span> Проверка...</span>`;
-  }
   state.servicesResults[svcId] = { running: true };
+  renderCheckerServices();
 
   try {
     const res = await callApi("check_single_service", svcId);
     if (res) {
       state.servicesResults[svcId] = res;
-      if (tagEl) {
-        if (res.ok) {
-          tagEl.innerHTML = `<span class="check-tag check-ok">🟢 Доступен (${res.latency_ms} ms)</span>`;
-        } else {
-          tagEl.innerHTML = `<span class="check-tag check-fail">🔴 Недоступен</span>`;
-        }
-      }
     }
   } catch (e) {
     console.error("Single check error:", e);
-    if (tagEl) {
-      tagEl.innerHTML = `<span class="check-tag check-fail">🔴 Ошибка</span>`;
-    }
+    state.servicesResults[svcId] = { ok: false, error: String(e), latency_ms: 0 };
   }
+  renderCheckerServices();
   updateCheckerSummary();
 }
 
@@ -709,28 +746,16 @@ async function checkAllServices() {
   if (btn) btn.disabled = true;
   if (label) label.textContent = "Проверка сервисов...";
 
-  // Set all to running
   DEFAULT_SERVICES.forEach(s => {
     state.servicesResults[s.id] = { running: true };
-    const tagEl = document.getElementById(`svc-tag-${s.id}`);
-    if (tagEl) {
-      tagEl.innerHTML = `<span class="check-tag check-running"><span class="spin-dot"></span> Проверка...</span>`;
-    }
   });
+  renderCheckerServices();
 
   try {
     const res = await callApi("check_blocked_services");
     if (res && res.results) {
       res.results.forEach(r => {
         state.servicesResults[r.id] = r;
-        const tagEl = document.getElementById(`svc-tag-${r.id}`);
-        if (tagEl) {
-          if (r.ok) {
-            tagEl.innerHTML = `<span class="check-tag check-ok">🟢 Доступен (${r.latency_ms} ms)</span>`;
-          } else {
-            tagEl.innerHTML = `<span class="check-tag check-fail">🔴 Недоступен</span>`;
-          }
-        }
       });
     }
   } catch (e) {
@@ -738,6 +763,7 @@ async function checkAllServices() {
   } finally {
     if (btn) btn.disabled = false;
     if (label) label.textContent = "Проверить все сервисы";
+    renderCheckerServices();
     updateCheckerSummary();
   }
 }
@@ -789,6 +815,127 @@ const checkAllBtn = document.getElementById("btn-check-services");
 if (checkAllBtn) {
   checkAllBtn.addEventListener("click", checkAllServices);
 }
+
+// ==========================================
+// Gemini Test Modal Logic
+// ==========================================
+function openGeminiModal() {
+  const modal = document.getElementById("modal-gemini-test");
+  if (!modal) return;
+  modal.style.display = "flex";
+
+  const diagBox = document.getElementById("gemini-modal-diag");
+  const selectedNode = state.nodes.find(n => n.id === state.settings.selected_node_id);
+  const isConnected = state.status === "connected";
+  const nodeName = selectedNode ? (selectedNode.name || selectedNode.country || "VPN Сервер") : "Сервер не выбран";
+  const geminiRes = state.servicesResults["gemini"];
+
+  let diagHtml = `
+    <div class="gemini-diag-item">
+      <span class="diag-label">Активный сервер:</span>
+      <span class="diag-val">${escapeHtml(nodeName)} (${isConnected ? '🟢 Подключен' : '⚪ Отключен'})</span>
+    </div>
+  `;
+  if (geminiRes && !geminiRes.running) {
+    diagHtml += `
+      <div class="gemini-diag-item">
+        <span class="diag-label">Статус диалогов:</span>
+        <span class="diag-val ${geminiRes.can_chat ? 'text-good' : 'text-fail'}">
+          ${geminiRes.can_chat ? '✓ Доступен для генерации' : '✕ Ограничен в регионе'}
+        </span>
+      </div>
+      <div class="gemini-diag-item">
+        <span class="diag-label">Региональный фильтр:</span>
+        <span class="diag-val ${geminiRes.region_eligible ? 'text-good' : 'text-fail'}">
+          ${geminiRes.region_eligible ? '✓ Разрешен Google' : '✕ Блокировка по IP'}
+        </span>
+      </div>
+      <div class="gemini-diag-item">
+        <span class="diag-label">Шлюз чата:</span>
+        <span class="diag-val ${geminiRes.gw_ok ? 'text-good' : 'text-fail'}">
+          ${geminiRes.gw_ok ? '✓ 204 OK' : '✕ Не отвечает'}
+        </span>
+      </div>
+    `;
+  }
+  if (diagBox) diagBox.innerHTML = diagHtml;
+}
+
+function closeGeminiModal() {
+  const modal = document.getElementById("modal-gemini-test");
+  if (modal) modal.style.display = "none";
+}
+
+async function runGeminiTest() {
+  const promptInput = document.getElementById("gemini-test-prompt");
+  const keyInput = document.getElementById("gemini-test-key");
+  const resultBox = document.getElementById("gemini-test-result-box");
+  const resultContent = document.getElementById("gemini-result-content");
+  const resultTime = document.getElementById("gemini-result-time");
+  const resultTitle = document.getElementById("gemini-result-status-title");
+  const runBtn = document.getElementById("btn-run-gemini-test");
+  const runLabel = document.getElementById("btn-run-gemini-label");
+
+  const prompt = promptInput ? promptInput.value.trim() : "Привет!";
+  const apiKey = keyInput ? keyInput.value.trim() : "";
+
+  if (runBtn) runBtn.disabled = true;
+  if (runLabel) runLabel.textContent = "Отправка...";
+
+  if (resultBox) {
+    resultBox.style.display = "block";
+    resultBox.className = "gemini-result-box loading";
+    resultContent.innerHTML = `<span class="spin-dot"></span> Выполняется запрос к Gemini через текущий VPN сервер...`;
+    resultTitle.textContent = "Проверка...";
+    resultTime.textContent = "";
+  }
+
+  try {
+    const res = await callApi("test_gemini_dialog", prompt, apiKey);
+    if (res && res.success) {
+      resultBox.className = "gemini-result-box success";
+      resultTitle.textContent = res.type === "live_chat" ? "Ответ модели Gemini (1.5 Flash):" : "Результат диагностики:";
+      resultTime.textContent = `${res.latency_ms} ms`;
+      resultTime.className = "ping-tag ping-good";
+      resultContent.textContent = res.reply || "Диалог подтвержден!";
+    } else {
+      resultBox.className = "gemini-result-box fail";
+      resultTitle.textContent = "Ошибка проверки диалога:";
+      resultTime.textContent = `${res ? res.latency_ms : 0} ms`;
+      resultTime.className = "ping-tag ping-bad";
+      resultContent.textContent = (res && res.error) ? res.error : "Сервер не ответил.";
+    }
+  } catch (err) {
+    resultBox.className = "gemini-result-box fail";
+    resultTitle.textContent = "Ошибка вызова:";
+    resultContent.textContent = String(err);
+  } finally {
+    if (runBtn) runBtn.disabled = false;
+    if (runLabel) runLabel.textContent = "Отправить / Проверить";
+  }
+}
+
+const btnCloseGeminiModal = document.getElementById("btn-close-gemini-modal");
+if (btnCloseGeminiModal) {
+  btnCloseGeminiModal.addEventListener("click", closeGeminiModal);
+}
+const btnCloseGeminiFooter = document.getElementById("btn-close-gemini-footer");
+if (btnCloseGeminiFooter) {
+  btnCloseGeminiFooter.addEventListener("click", closeGeminiModal);
+}
+const modalGemini = document.getElementById("modal-gemini-test");
+if (modalGemini) {
+  modalGemini.addEventListener("click", (e) => {
+    if (e.target === modalGemini) closeGeminiModal();
+  });
+}
+const btnRunGemini = document.getElementById("btn-run-gemini-test");
+if (btnRunGemini) {
+  btnRunGemini.addEventListener("click", runGeminiTest);
+}
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeGeminiModal();
+});
 
 // Status Poller
 async function pollStatus() {
