@@ -166,6 +166,18 @@ def index():
 def static_assets(filepath):
     return static_file(filepath, root=UI_DIR)
 
+@server.hook("after_request")
+def enable_cors():
+    """Allow cross-origin requests from file:// and localhost origins."""
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+
+@server.route("/api/<method>", method="OPTIONS")
+def api_options(method):
+    """Handle CORS preflight requests."""
+    return ""
+
 @server.post("/api/<method>")
 def api_handler(method):
     response.content_type = "application/json"

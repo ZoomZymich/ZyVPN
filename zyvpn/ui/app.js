@@ -8,39 +8,74 @@ let state = {
 };
 
 // Universal API invoker (waits for PyWebView native bridge or falls back to HTTP REST)
-let pywebviewReadyPromise = null;
-function ensureApiReady() {
+function waitForNativeApi(maxMs = 1200) {
   if (window.pywebview && window.pywebview.api) {
     return Promise.resolve(window.pywebview.api);
   }
-  if (!pywebviewReadyPromise) {
-    pywebviewReadyPromise = new Promise((resolve) => {
-      const onReady = () => {
-        window.removeEventListener("pywebviewready", onReady);
-        resolve(window.pywebview ? window.pywebview.api : null);
-      };
-      window.addEventListener("pywebviewready", onReady);
-      setTimeout(() => {
-        window.removeEventListener("pywebviewready", onReady);
-        resolve(window.pywebview ? window.pywebview.api : null);
-      }, 2000);
-    });
-  }
-  return pywebviewReadyPromise;
+  return new Promise((resolve) => {
+    let settled = false;
+    const cleanup = () => {
+      window.removeEventListener("pywebviewready", onReady);
+      clearInterval(interval);
+      clearTimeout(timer);
+    };
+    const onReady = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(window.pywebview ? window.pywebview.api : null);
+    };
+    window.addEventListener("pywebviewready", onReady);
+
+    // Poll every 35ms in case pywebviewready fired before this listener was added
+    const interval = setInterval(() => {
+      if (window.pywebview && window.pywebview.api) {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(window.pywebview.api);
+      }
+    }, 35);
+
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(window.pywebview ? window.pywebview.api : null);
+    }, maxMs);
+  });
 }
 
 async function callApi(method, ...args) {
-  const nativeApi = await ensureApiReady();
-  if (nativeApi && typeof nativeApi[method] === "function") {
-    return await nativeApi[method](...args);
+  // 1. Direct check: is native API already present?
+  if (window.pywebview && window.pywebview.api && typeof window.pywebview.api[method] === "function") {
+    try {
+      return await window.pywebview.api[method](...args);
+    } catch (e) {
+      console.warn(`Native call ${method} failed, trying HTTP:`, e);
+    }
   }
-  // HTTP REST fallback (absolute localhost URL so it works from file:/// origin)
+
+  // 2. Short wait for native bridge if not yet ready
+  const nativeApi = await waitForNativeApi(600);
+  if (nativeApi && typeof nativeApi[method] === "function") {
+    try {
+      return await nativeApi[method](...args);
+    } catch (e) {
+      console.warn(`Native call ${method} failed after wait, trying HTTP:`, e);
+    }
+  }
+
+  // 3. HTTP REST fallback with full CORS support
   try {
     const res = await fetch(`http://127.0.0.1:18080/api/${method}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ args })
     });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
     return await res.json();
   } catch (e) {
     console.error(`API call ${method} failed:`, e);
@@ -1008,11 +1043,19 @@ async function init() {
     state.subscriptions = data.subscriptions || [];
     state.settings = data.settings || {};
     
-    // Sync Settings Toggles
-    toggleRouting.checked = (state.settings.routing_mode === "bypass_ru_lan");
-    selectRoutingMode.value = state.settings.routing_mode || "bypass_ru_lan";
-    toggleTun.checked = (state.settings.mode === "tun");
-    selectDns.value = state.settings.dns_server || "1.1.1.1";
+    // Sync Settings Toggles (with null checks)
+    if (typeof toggleRouting !== "undefined" && toggleRouting) {
+      toggleRouting.checked = (state.settings.routing_mode === "bypass_ru_lan");
+    }
+    if (typeof selectRoutingMode !== "undefined" && selectRoutingMode) {
+      selectRoutingMode.value = state.settings.routing_mode || "bypass_ru_lan";
+    }
+    if (typeof toggleTun !== "undefined" && toggleTun) {
+      toggleTun.checked = (state.settings.mode === "tun");
+    }
+    if (typeof selectDns !== "undefined" && selectDns) {
+      selectDns.value = state.settings.dns_server || "1.1.1.1";
+    }
 
     setupFilterPills();
     renderSelectedNode();
@@ -1029,21 +1072,17 @@ async function init() {
   } catch (e) {
     console.error("Init failed:", e);
     isInitialized = false;
-    if (initRetries < 6) {
+    if (initRetries < 15) {
       initRetries++;
-      setTimeout(init, 500);
+      setTimeout(init, 400);
     }
   }
 }
 
-window.addEventListener("pywebviewready", () => {
-  init();
-});
-
+// Guaranteed init triggers across all webview lifecycle events
+window.addEventListener("pywebviewready", init);
 window.addEventListener("DOMContentLoaded", () => {
-  if (window.pywebview && window.pywebview.api) {
-    init();
-  }
+  init();
   // Start background status polling
   setInterval(pollStatus, 2000);
 
@@ -1084,4 +1123,9 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+// Immediate and delayed fallback triggers so nothing can ever prevent init
+setTimeout(init, 80);
+setTimeout(init, 400);
+setTimeout(init, 1200);
 

@@ -245,29 +245,49 @@ def generate_tun_helper_config(settings: AppSettings, node: Optional[VpnNode] = 
         "mail.ru", "dzen.ru", "rutube.ru"
     ]
 
+    # Rules are evaluated strictly in order top-to-bottom.
+    # 1. CRITICAL: Process bypass MUST BE FIRST so xray and sing-box never loop into TUN!
     route_rules = [
-        {"action": "sniff"},
-        {"port": 53, "action": "hijack-dns"},
-        # CRITICAL: Bypass xray.exe and sing-box.exe from TUN to prevent infinite routing loop!
         {"process_name": ["xray.exe", "xray", "sing-box.exe", "sing-box"], "outbound": "direct"},
         {"ip_cidr": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"], "outbound": "direct"}
     ]
     dns_rules = []
 
-    # Direct route to the VPN server itself so the connection does not loop into TUN
+    # 2. VPN server destination bypass (IP or domain)
     if node and node.server:
-        route_rules.append({"domain": [node.server], "outbound": "direct"})
-        dns_rules.append({"domain": [node.server], "server": "local-dns"})
+        import ipaddress
+        is_ip = False
+        try:
+            ipaddress.ip_address(node.server)
+            is_ip = True
+        except ValueError:
+            is_ip = False
 
+        if is_ip:
+            route_rules.append({"ip_cidr": [f"{node.server}/32"], "outbound": "direct"})
+        else:
+            route_rules.append({"domain": [node.server], "outbound": "direct"})
+            dns_rules.append({"domain": [node.server], "server": "local-dns"})
+
+    # 3. Russian traffic bypass (LAN & RU services)
     if settings.routing_mode == "bypass_ru_lan":
         route_rules.append({"domain_suffix": ru_suffixes, "outbound": "direct"})
+        route_rules.append({"geosite": ["category-ru"], "outbound": "direct"})
+        route_rules.append({"geoip": ["ru"], "outbound": "direct"})
         dns_rules.append({"domain_suffix": ru_suffixes, "server": "local-dns"})
+        dns_rules.append({"geosite": ["category-ru"], "server": "local-dns"})
+
+    # 4. Hijack DNS port 53 for all user applications (Discord, browsers, games)
+    route_rules.append({"port": 53, "action": "hijack-dns"})
+
+    # 5. Sniff protocols for domain extraction
+    route_rules.append({"action": "sniff"})
 
     config = {
         "log": {"level": "warn"},
         "dns": {
             "servers": [
-                {"tag": "remote-dns", "type": "https", "server": "1.1.1.1", "detour": "proxy"},
+                {"tag": "remote-dns", "type": "udp", "server": dns_server, "detour": "proxy"},
                 {"tag": "local-dns", "type": "udp", "server": "77.88.8.8", "detour": "direct"}
             ],
             "rules": dns_rules
@@ -296,7 +316,7 @@ def generate_tun_helper_config(settings: AppSettings, node: Optional[VpnNode] = 
             {"type": "direct", "tag": "direct"}
         ],
         "route": {
-            "default_domain_resolver": "remote-dns",
+            "default_domain_resolver": "local-dns",
             "rules": route_rules,
             "final": "proxy",
             "auto_detect_interface": True
@@ -307,6 +327,8 @@ def generate_tun_helper_config(settings: AppSettings, node: Optional[VpnNode] = 
 
 def generate_singbox_config(node: VpnNode, settings: AppSettings, enable_tun: bool = False) -> Dict[str, Any]:
     """Generate Sing-box JSON configuration for Hysteria 2 or TUIC."""
+    dns_server = settings.dns_server or "1.1.1.1"
+
     inbounds = [
         {
             "type": "mixed",
@@ -379,25 +401,41 @@ def generate_singbox_config(node: VpnNode, settings: AppSettings, enable_tun: bo
     ]
 
     route_rules = [
-        {"action": "sniff"},
-        {"port": 53, "action": "hijack-dns"},
+        {"process_name": ["sing-box.exe", "sing-box"], "outbound": "direct"},
         {"ip_cidr": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"], "outbound": "direct"}
     ]
     dns_rules = []
 
     if node and node.server:
-        route_rules.append({"domain": [node.server], "outbound": "direct"})
-        dns_rules.append({"domain": [node.server], "server": "local-dns"})
+        import ipaddress
+        is_ip = False
+        try:
+            ipaddress.ip_address(node.server)
+            is_ip = True
+        except ValueError:
+            is_ip = False
+
+        if is_ip:
+            route_rules.append({"ip_cidr": [f"{node.server}/32"], "outbound": "direct"})
+        else:
+            route_rules.append({"domain": [node.server], "outbound": "direct"})
+            dns_rules.append({"domain": [node.server], "server": "local-dns"})
 
     if settings.routing_mode == "bypass_ru_lan":
         route_rules.append({"domain_suffix": ru_suffixes, "outbound": "direct"})
+        route_rules.append({"geosite": ["category-ru"], "outbound": "direct"})
+        route_rules.append({"geoip": ["ru"], "outbound": "direct"})
         dns_rules.append({"domain_suffix": ru_suffixes, "server": "local-dns"})
+        dns_rules.append({"geosite": ["category-ru"], "server": "local-dns"})
+
+    route_rules.append({"port": 53, "action": "hijack-dns"})
+    route_rules.append({"action": "sniff"})
 
     config = {
         "log": {"level": "warn"},
         "dns": {
             "servers": [
-                {"tag": "remote-dns", "type": "https", "server": "1.1.1.1", "detour": "proxy"},
+                {"tag": "remote-dns", "type": "udp", "server": dns_server, "detour": "proxy"},
                 {"tag": "local-dns", "type": "udp", "server": "77.88.8.8", "detour": "direct"}
             ],
             "rules": dns_rules
@@ -405,7 +443,7 @@ def generate_singbox_config(node: VpnNode, settings: AppSettings, enable_tun: bo
         "inbounds": inbounds,
         "outbounds": outbounds,
         "route": {
-            "default_domain_resolver": "remote-dns",
+            "default_domain_resolver": "local-dns",
             "rules": route_rules,
             "final": "proxy",
             "auto_detect_interface": True
