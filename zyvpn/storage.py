@@ -33,6 +33,11 @@ class Storage:
             with open(self.config_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             self.settings = AppSettings.from_dict(data.get("settings", {}))
+            # Migrate legacy 10808/10809 ports to avoid conflicts with other VPN clients
+            if self.settings.socks_port == 10808 and self.settings.http_port == 10809:
+                self.settings.socks_port = 20808
+                self.settings.http_port = 20809
+                self.save()
             self.subscriptions = [Subscription.from_dict(s) for s in data.get("subscriptions", [])]
             self.nodes = [VpnNode.from_dict(n) for n in data.get("nodes", [])]
         except Exception as e:

@@ -35,4 +35,9 @@ if %errorlevel% equ 0 (
         )
     )
 )
+if not exist "bin\xray.exe" (
+    echo [INFO] VPN core binaries not found in bin\. Downloading automatically...
+    "%PYTHON_EXE%" scripts\download_binaries.py
+)
+
 start "" "%PYTHON_EXE%" run.py

@@ -99,18 +99,21 @@ class CoreController:
             pass
 
     def cleanup_stale_processes(self):
-        """Kill any lingering xray.exe or sing-box.exe processes to prevent port conflicts."""
+        """Kill any lingering processes occupying ZyVPN's dedicated ports without touching other VPNs."""
         if sys.platform != "win32":
             return
         try:
-            subprocess.run(
-                ["taskkill", "/F", "/IM", "xray.exe", "/T"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=CREATE_NO_WINDOW
+            ps_cmd = (
+                "$ports = @(20808, 20809); "
+                "$conns = Get-NetTCPConnection -LocalPort $ports -State Listen -ErrorAction SilentlyContinue; "
+                "foreach ($c in $conns) { "
+                "    if ($c.OwningProcess -gt 0) { "
+                "        Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue "
+                "    } "
+                "}"
             )
             subprocess.run(
-                ["taskkill", "/F", "/IM", "sing-box.exe", "/T"],
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 creationflags=CREATE_NO_WINDOW
