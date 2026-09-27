@@ -49,6 +49,11 @@ class Storage:
 
     def add_subscription(self, url: str, name: Optional[str] = None) -> Subscription:
         url = url.strip()
+        clean_url = url.rstrip('/')
+        for existing in self.subscriptions:
+            if existing.url.strip().rstrip('/') == clean_url:
+                raise ValueError("Эта подписка уже добавлена в список.")
+
         sub = Subscription(
             name=name or f"Sub-{len(self.subscriptions) + 1}",
             url=url,

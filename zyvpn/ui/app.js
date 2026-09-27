@@ -350,6 +350,15 @@ document.getElementById("btn-add-sub").addEventListener("click", async () => {
 
   try {
     if (val.startsWith("http://") || val.startsWith("https://")) {
+      const cleanVal = val.trim().replace(/\/+$/, "");
+      const isDuplicate = state.subscriptions.some(s => (s.url || "").trim().replace(/\/+$/, "") === cleanVal);
+      if (isDuplicate) {
+        alert("Эта подписка уже добавлена в ваш список!");
+        btn.textContent = "Добавить";
+        btn.disabled = false;
+        return;
+      }
+
       const res = await callApi("add_subscription", val);
       if (res.success) {
         state.subscriptions = res.subscriptions || [...state.subscriptions, res.subscription];
@@ -360,7 +369,7 @@ document.getElementById("btn-add-sub").addEventListener("click", async () => {
         renderSelectedNode();
         alert(`Подписка сохранена! Загружено серверов: ${res.nodes_count || 0}`);
       } else {
-        alert(`Не удалось загрузить подписку: ${res.error}`);
+        alert(`Не удалось добавить подписку: ${res.error}`);
       }
     } else {
       // Single key or base64 raw text
