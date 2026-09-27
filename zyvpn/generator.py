@@ -36,7 +36,7 @@ def generate_xray_config(node: VpnNode, settings: AppSettings) -> Dict[str, Any]
             "sniffing": {
                 "enabled": True,
                 "destOverride": ["http", "tls", "quic"],
-                "routeOnly": True
+                "routeOnly": False
             },
             "settings": {
                 "auth": "noauth",
@@ -51,7 +51,7 @@ def generate_xray_config(node: VpnNode, settings: AppSettings) -> Dict[str, Any]
             "sniffing": {
                 "enabled": True,
                 "destOverride": ["http", "tls"],
-                "routeOnly": True
+                "routeOnly": False
             },
             "settings": {
                 "allowTransparent": False
@@ -197,7 +197,7 @@ def generate_xray_config(node: VpnNode, settings: AppSettings) -> Dict[str, Any]
         {
             "type": "field",
             "outboundTag": "direct",
-            "ip": ["geoip:private"]
+            "ip": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"]
         }
     ]
 
@@ -228,7 +228,7 @@ def generate_xray_config(node: VpnNode, settings: AppSettings) -> Dict[str, Any]
         "inbounds": inbounds,
         "outbounds": outbounds,
         "routing": {
-            "domainStrategy": "AsIs",
+            "domainStrategy": "IPIfNonMatch",
             "rules": routing_rules
         }
     }
@@ -247,10 +247,10 @@ def generate_tun_helper_config(settings: AppSettings, node: Optional[VpnNode] = 
 
     route_rules = [
         {"action": "sniff"},
-        {"action": "hijack-dns"},
+        {"port": 53, "action": "hijack-dns"},
         # CRITICAL: Bypass xray.exe and sing-box.exe from TUN to prevent infinite routing loop!
         {"process_name": ["xray.exe", "xray", "sing-box.exe", "sing-box"], "outbound": "direct"},
-        {"ip_is_private": True, "outbound": "direct"}
+        {"ip_cidr": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"], "outbound": "direct"}
     ]
     dns_rules = []
 
@@ -267,8 +267,8 @@ def generate_tun_helper_config(settings: AppSettings, node: Optional[VpnNode] = 
         "log": {"level": "warn"},
         "dns": {
             "servers": [
-                {"tag": "remote-dns", "type": "tcp", "server": dns_server, "detour": "proxy"},
-                {"tag": "local-dns", "type": "udp", "server": "77.88.8.8"}
+                {"tag": "remote-dns", "type": "https", "server": "1.1.1.1", "detour": "proxy"},
+                {"tag": "local-dns", "type": "udp", "server": "77.88.8.8", "detour": "direct"}
             ],
             "rules": dns_rules
         },
@@ -380,23 +380,25 @@ def generate_singbox_config(node: VpnNode, settings: AppSettings, enable_tun: bo
 
     route_rules = [
         {"action": "sniff"},
-        {"action": "hijack-dns"},
-        {"ip_is_private": True, "outbound": "direct"}
+        {"port": 53, "action": "hijack-dns"},
+        {"ip_cidr": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"], "outbound": "direct"}
     ]
     dns_rules = []
+
+    if node and node.server:
+        route_rules.append({"domain": [node.server], "outbound": "direct"})
+        dns_rules.append({"domain": [node.server], "server": "local-dns"})
 
     if settings.routing_mode == "bypass_ru_lan":
         route_rules.append({"domain_suffix": ru_suffixes, "outbound": "direct"})
         dns_rules.append({"domain_suffix": ru_suffixes, "server": "local-dns"})
 
-    dns_server = settings.dns_server or "1.1.1.1"
-
     config = {
         "log": {"level": "warn"},
         "dns": {
             "servers": [
-                {"tag": "remote-dns", "type": "tcp", "server": dns_server, "detour": "proxy"},
-                {"tag": "local-dns", "type": "udp", "server": "77.88.8.8"}
+                {"tag": "remote-dns", "type": "https", "server": "1.1.1.1", "detour": "proxy"},
+                {"tag": "local-dns", "type": "udp", "server": "77.88.8.8", "detour": "direct"}
             ],
             "rules": dns_rules
         },
