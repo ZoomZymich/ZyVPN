@@ -234,7 +234,7 @@ def generate_xray_config(node: VpnNode, settings: AppSettings) -> Dict[str, Any]
     }
     return config
 
-def generate_tun_helper_config(settings: AppSettings) -> Dict[str, Any]:
+def generate_tun_helper_config(settings: AppSettings, node: Optional[VpnNode] = None) -> Dict[str, Any]:
     """Generate Sing-box TUN router configuration that captures all PC traffic (TCP & UDP) into local Xray SOCKS5."""
     dns_server = settings.dns_server or "1.1.1.1"
 
@@ -248,9 +248,16 @@ def generate_tun_helper_config(settings: AppSettings) -> Dict[str, Any]:
     route_rules = [
         {"action": "sniff"},
         {"action": "hijack-dns"},
+        # CRITICAL: Bypass xray.exe and sing-box.exe from TUN to prevent infinite routing loop!
+        {"process_name": ["xray.exe", "xray", "sing-box.exe", "sing-box"], "outbound": "direct"},
         {"ip_is_private": True, "outbound": "direct"}
     ]
     dns_rules = []
+
+    # Direct route to the VPN server itself so the connection does not loop into TUN
+    if node and node.server:
+        route_rules.append({"domain": [node.server], "outbound": "direct"})
+        dns_rules.append({"domain": [node.server], "server": "local-dns"})
 
     if settings.routing_mode == "bypass_ru_lan":
         route_rules.append({"domain_suffix": ru_suffixes, "outbound": "direct"})
@@ -273,7 +280,9 @@ def generate_tun_helper_config(settings: AppSettings) -> Dict[str, Any]:
                 "address": ["172.19.0.1/30"],
                 "auto_route": True,
                 "strict_route": False,
-                "stack": "mixed"
+                "stack": "mixed",
+                "endpoint_independent_nat": True,
+                "udp_timeout": 300
             }
         ],
         "outbounds": [
@@ -281,7 +290,8 @@ def generate_tun_helper_config(settings: AppSettings) -> Dict[str, Any]:
                 "type": "socks",
                 "tag": "proxy",
                 "server": "127.0.0.1",
-                "server_port": settings.socks_port
+                "server_port": settings.socks_port,
+                "version": "5"
             },
             {"type": "direct", "tag": "direct"}
         ],
@@ -314,7 +324,9 @@ def generate_singbox_config(node: VpnNode, settings: AppSettings, enable_tun: bo
             "address": ["172.19.0.1/30"],
             "auto_route": True,
             "strict_route": False,
-            "stack": "mixed"
+            "stack": "mixed",
+            "endpoint_independent_nat": True,
+            "udp_timeout": 300
         })
 
     outbounds = []
@@ -412,7 +424,7 @@ def select_engine_and_generate_config(node: VpnNode, settings: AppSettings) -> T
         tun_helper = None
         if settings.mode == "tun":
             # Sing-box runs as the TUN interface router, capturing whole-PC TCP/UDP into local Xray SOCKS5
-            tun_cfg = generate_tun_helper_config(settings)
+            tun_cfg = generate_tun_helper_config(settings, node)
             tun_helper = ("sing-box", tun_cfg)
         return "xray", xray_cfg, tun_helper
 

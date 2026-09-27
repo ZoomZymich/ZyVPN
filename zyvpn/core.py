@@ -280,6 +280,7 @@ class CoreController:
         # Clean up system proxy and any stray processes
         disable_system_proxy()
         self.cleanup_stale_processes()
+        time.sleep(0.3)
         self.status = "disconnected"
         self.current_node = None
         self.start_time = 0

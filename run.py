@@ -188,8 +188,21 @@ def api_handler(method):
         response.status = 404
         return json.dumps({"error": f"Method {method} not found"})
 
+from wsgiref.simple_server import WSGIServer, make_server
+from socketserver import ThreadingMixIn
+import bottle
+
+class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
+    daemon_threads = True
+    timeout = 10.0
+
+class ThreadingWSGIAdapter(bottle.ServerAdapter):
+    def run(self, handler):
+        srv = make_server(self.host, self.port, handler, server_class=ThreadingWSGIServer)
+        srv.serve_forever()
+
 def run_server():
-    server.run(host="127.0.0.1", port=18080, quiet=True)
+    server.run(server=ThreadingWSGIAdapter(host="127.0.0.1", port=18080), quiet=True)
 
 def main():
     global window, tray, is_quitting
@@ -249,7 +262,7 @@ def main():
             height=700,
             min_size=(680, 520),
             frameless=True,
-            easy_drag=True,
+            easy_drag=False,
             shadow=True,
             background_color="#090d16"
         )

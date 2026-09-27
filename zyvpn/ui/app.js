@@ -7,14 +7,36 @@ let state = {
   status: { status: "disconnected", logs: [], uptime_seconds: 0 }
 };
 
-// Universal API invoker (supports PyWebView native api or fallback to HTTP REST)
-async function callApi(method, ...args) {
-  if (window.pywebview && window.pywebview.api && typeof window.pywebview.api[method] === "function") {
-    return await window.pywebview.api[method](...args);
+// Universal API invoker (waits for PyWebView native bridge or falls back to HTTP REST)
+let pywebviewReadyPromise = null;
+function ensureApiReady() {
+  if (window.pywebview && window.pywebview.api) {
+    return Promise.resolve(window.pywebview.api);
   }
-  // HTTP REST fallback
+  if (!pywebviewReadyPromise) {
+    pywebviewReadyPromise = new Promise((resolve) => {
+      const onReady = () => {
+        window.removeEventListener("pywebviewready", onReady);
+        resolve(window.pywebview ? window.pywebview.api : null);
+      };
+      window.addEventListener("pywebviewready", onReady);
+      setTimeout(() => {
+        window.removeEventListener("pywebviewready", onReady);
+        resolve(window.pywebview ? window.pywebview.api : null);
+      }, 2000);
+    });
+  }
+  return pywebviewReadyPromise;
+}
+
+async function callApi(method, ...args) {
+  const nativeApi = await ensureApiReady();
+  if (nativeApi && typeof nativeApi[method] === "function") {
+    return await nativeApi[method](...args);
+  }
+  // HTTP REST fallback (absolute localhost URL so it works from file:/// origin)
   try {
-    const res = await fetch(`/api/${method}`, {
+    const res = await fetch(`http://127.0.0.1:18080/api/${method}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ args })
@@ -947,23 +969,32 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeGeminiModal();
 });
 
-// Status Poller
+// Status Poller with concurrency guard
+let isPolling = false;
 async function pollStatus() {
+  if (isPolling || !isInitialized) return;
+  isPolling = true;
   try {
     const st = await callApi("get_status");
     if (st) updateStatusUI(st);
   } catch (e) {
     // ignore
+  } finally {
+    isPolling = false;
   }
 }
 
 // Initial Data Load
 let isInitialized = false;
+let initRetries = 0;
+
 async function init() {
   if (isInitialized) return;
-  isInitialized = true;
   try {
     const data = await callApi("get_initial_data");
+    if (!data || !data.settings) {
+      throw new Error("Invalid initial data payload");
+    }
     state.nodes = data.nodes || [];
     state.subscriptions = data.subscriptions || [];
     state.settings = data.settings || {};
@@ -981,17 +1012,31 @@ async function init() {
     renderCheckerServices();
     if (data.status) updateStatusUI(data.status);
     
-    // Fetch initial IP information
-    fetchAndRenderIpInfo();
+    isInitialized = true;
+    console.log(`ZyVPN initialized successfully. Nodes: ${state.nodes.length}, Subscriptions: ${state.subscriptions.length}`);
+
+    // Deferred non-blocking IP information lookup
+    setTimeout(fetchAndRenderIpInfo, 1000);
   } catch (e) {
     console.error("Init failed:", e);
+    isInitialized = false;
+    if (initRetries < 6) {
+      initRetries++;
+      setTimeout(init, 500);
+    }
   }
 }
 
-window.addEventListener("pywebviewready", init);
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("pywebviewready", () => {
   init();
-  setInterval(pollStatus, 1500);
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  if (window.pywebview && window.pywebview.api) {
+    init();
+  }
+  // Start background status polling
+  setInterval(pollStatus, 2000);
 
   // Window Controls for Frameless Window
   const btnMin = document.getElementById("win-btn-minimize");

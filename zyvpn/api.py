@@ -1,4 +1,5 @@
 import time
+import threading
 import requests
 import concurrent.futures
 from typing import Dict, Any, Optional, List
@@ -178,6 +179,20 @@ class VpnApi:
         self.window = None
         self.tray = None
         self._is_maximized = False
+        self._cached_ip_info = {
+            "success": False,
+            "connected": False,
+            "ip": "—",
+            "country_code": "un",
+            "country_name": "Не подключено",
+            "country_name_en": "Disconnected",
+            "city": "",
+            "flag_emoji": "🌐",
+            "flag_url": ""
+        }
+        self._ip_fetch_lock = threading.Lock()
+        self._ip_fetch_time = 0
+        self._is_fetching_ip = False
 
     def set_window(self, window):
         self.window = window
@@ -343,86 +358,102 @@ class VpnApi:
     def get_status(self) -> Dict[str, Any]:
         return self.core.get_status()
 
-    def get_connection_ip_info(self) -> Dict[str, Any]:
-        """Fetch current external IP, country, and location through proxy or directly."""
-        http_port = self.storage.settings.http_port
-        is_connected = self.core.status == "connected"
-        
-        proxies = None
-        if is_connected:
-            proxies = {
-                "http": f"http://127.0.0.1:{http_port}",
-                "https": f"http://127.0.0.1:{http_port}"
-            }
-        
-        # 1. Try ipwho.is (fast HTTPS geoip)
-        ip_data = None
-        try:
-            r = requests.get(
-                "https://ipwho.is/",
-                proxies=proxies,
-                timeout=5.0,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-            )
-            if r.status_code == 200:
-                data = r.json()
-                if data.get("success", True):
-                    ip_data = {
-                        "ip": data.get("ip", ""),
-                        "country_code": (data.get("country_code") or "").lower(),
-                        "city": data.get("city", "")
-                    }
-        except Exception:
-            pass
-
-        # 2. Try fallback: ipinfo.io
-        if not ip_data or not ip_data.get("ip"):
+    def _fetch_ip_worker(self, is_connected: bool, http_port: int):
+        with self._ip_fetch_lock:
+            proxies = None
+            if is_connected:
+                proxies = {
+                    "http": f"http://127.0.0.1:{http_port}",
+                    "https": f"http://127.0.0.1:{http_port}"
+                }
+            ip_data = None
+            # 1. Try ipwho.is (fast geoip) with short 2.5s timeout
             try:
                 r = requests.get(
-                    "https://ipinfo.io/json",
+                    "https://ipwho.is/",
                     proxies=proxies,
-                    timeout=5.0,
+                    timeout=2.5,
                     headers={"User-Agent": "Mozilla/5.0"}
                 )
                 if r.status_code == 200:
                     data = r.json()
-                    ip_data = {
-                        "ip": data.get("ip", ""),
-                        "country_code": (data.get("country") or "").lower(),
-                        "city": data.get("city", "")
-                    }
+                    if data.get("success", True):
+                        ip_data = {
+                            "ip": data.get("ip", ""),
+                            "country_code": (data.get("country_code") or "").lower(),
+                            "city": data.get("city", "")
+                        }
             except Exception:
                 pass
 
-        if ip_data and ip_data.get("ip"):
-            details = get_country_details(ip_data["country_code"])
-            return {
-                "success": True,
-                "connected": is_connected,
-                "ip": ip_data["ip"],
-                "country_code": details["country_code"],
-                "country_name": details["name_ru"],
-                "country_name_en": details["name_en"],
-                "city": ip_data.get("city", ""),
-                "flag_emoji": details["flag_emoji"],
-                "flag_url": details["flag_url"]
-            }
+            # 2. Try fallback: ipinfo.io with 2.5s timeout
+            if not ip_data or not ip_data.get("ip"):
+                try:
+                    r = requests.get(
+                        "https://ipinfo.io/json",
+                        proxies=proxies,
+                        timeout=2.5,
+                        headers={"User-Agent": "Mozilla/5.0"}
+                    )
+                    if r.status_code == 200:
+                        data = r.json()
+                        ip_data = {
+                            "ip": data.get("ip", ""),
+                            "country_code": (data.get("country") or "").lower(),
+                            "city": data.get("city", "")
+                        }
+                except Exception:
+                    pass
 
-        # Fallback when lookup fails or disconnected
-        selected = self.storage.get_selected_node()
-        fallback_country = selected.country_code if (selected and is_connected) else "un"
-        details = get_country_details(fallback_country)
-        return {
-            "success": False,
-            "connected": is_connected,
-            "ip": "—",
-            "country_code": details["country_code"],
-            "country_name": details["name_ru"] if is_connected else "Не подключено",
-            "country_name_en": details["name_en"] if is_connected else "Disconnected",
-            "city": "",
-            "flag_emoji": details["flag_emoji"],
-            "flag_url": details["flag_url"]
-        }
+            if ip_data and ip_data.get("ip"):
+                details = get_country_details(ip_data["country_code"])
+                self._cached_ip_info = {
+                    "success": True,
+                    "connected": is_connected,
+                    "ip": ip_data["ip"],
+                    "country_code": details["country_code"],
+                    "country_name": details["name_ru"],
+                    "country_name_en": details["name_en"],
+                    "city": ip_data.get("city", ""),
+                    "flag_emoji": details["flag_emoji"],
+                    "flag_url": details["flag_url"]
+                }
+            else:
+                selected = self.storage.get_selected_node()
+                fallback_country = selected.country_code if (selected and is_connected) else "un"
+                details = get_country_details(fallback_country)
+                self._cached_ip_info = {
+                    "success": False,
+                    "connected": is_connected,
+                    "ip": "—",
+                    "country_code": details["country_code"],
+                    "country_name": details["name_ru"] if is_connected else "Не подключено",
+                    "country_name_en": details["name_en"] if is_connected else "Disconnected",
+                    "city": "",
+                    "flag_emoji": details["flag_emoji"],
+                    "flag_url": details["flag_url"]
+                }
+            self._ip_fetch_time = time.time()
+            self._is_fetching_ip = False
+
+    def get_connection_ip_info(self) -> Dict[str, Any]:
+        """Return cached external IP, country, and location instantly without blocking the UI bridge."""
+        is_connected = self.core.status == "connected"
+        http_port = self.storage.settings.http_port
+
+        now = time.time()
+        needs_refresh = (
+            (now - self._ip_fetch_time > 45) or 
+            (is_connected != self._cached_ip_info.get("connected")) or
+            (self._cached_ip_info.get("ip") == "—")
+        )
+
+        if needs_refresh and not self._is_fetching_ip:
+            self._is_fetching_ip = True
+            t = threading.Thread(target=self._fetch_ip_worker, args=(is_connected, http_port), daemon=True)
+            t.start()
+
+        return dict(self._cached_ip_info)
 
     def check_blocked_services(self) -> Dict[str, Any]:
         """Test reachability of key blocked services through active proxy."""
