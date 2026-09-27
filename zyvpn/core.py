@@ -91,8 +91,12 @@ class CoreController:
         self._start_lock = threading.Lock()
         self._job = create_kill_on_close_job()
 
-        # Clean any stale orphan processes from previous crashes or task manager kills
+        # Clean any stale orphan processes and reset stale system proxy from previous crashes
         self.cleanup_stale_processes()
+        try:
+            disable_system_proxy()
+        except Exception:
+            pass
 
     def cleanup_stale_processes(self):
         """Kill any lingering xray.exe or sing-box.exe processes to prevent port conflicts."""
@@ -250,10 +254,10 @@ class CoreController:
                 self.log(f"Connection failed: {e}", level="error")
                 self.status = "error"
                 self.error_message = str(e)
-                self.stop()
+                self.stop(preserve_error=True)
                 return False
 
-    def stop(self):
+    def stop(self, preserve_error: bool = False):
         self.log("Disconnecting...")
         if self.secondary_process:
             try:
@@ -281,7 +285,9 @@ class CoreController:
         disable_system_proxy()
         self.cleanup_stale_processes()
         time.sleep(0.3)
-        self.status = "disconnected"
+        if not preserve_error:
+            self.status = "disconnected"
+            self.error_message = ""
         self.current_node = None
         self.start_time = 0
         self.log("Disconnected successfully.")

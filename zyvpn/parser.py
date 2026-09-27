@@ -46,6 +46,8 @@ def parse_vless_url(url: str, sub_id: str = "manual") -> Optional[VpnNode]:
         
         security = get_q("security", "none").lower()
         flow = get_q("flow", "")
+        if transport != "tcp":
+            flow = ""
         
         # Security settings (Reality or TLS)
         sec_settings: Dict[str, Any] = {
@@ -599,6 +601,8 @@ def is_dummy_node(node: VpnNode) -> bool:
 
 def fetch_subscription_data(url: str, headers: dict) -> Optional[requests.Response]:
     """Fetch subscription URL with SSL-fallback and local proxy retry."""
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     try:
         return requests.get(url, headers=headers, timeout=15)
     except requests.exceptions.SSLError:
@@ -632,6 +636,8 @@ def fetch_and_parse_subscription(url: str, sub_id: str = "manual") -> List[VpnNo
             raise ValueError("Превышен лимит устройств для этой подписки. Освободите устройство в боте или увеличьте лимит.")
         if resp and resp.status_code == 200:
             primary_nodes = parse_subscription_content(resp.text, sub_id)
+    except ValueError:
+        raise
     except Exception as e:
         print(f"Primary subscription fetch warning: {e}")
 

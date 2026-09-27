@@ -13,15 +13,26 @@ if exist "ZyVPN.exe" (
 )
 
 echo Compiled ZyVPN.exe not found, starting via Python...
-set PYTHON_EXE=C:\Users\Zyma\AppData\Local\Programs\Python\Python312\python.exe
-if not exist "%PYTHON_EXE%" (
-    where python >nul 2>&1
+set PYTHON_EXE=
+where python >nul 2>&1
+if %errorlevel% equ 0 (
+    set PYTHON_EXE=python
+) else (
+    where py >nul 2>&1
     if %errorlevel% equ 0 (
-        set PYTHON_EXE=python
+        set PYTHON_EXE=py
     ) else (
-        echo [ERROR] Python not found.
-        pause
-        exit /b 1
+        if exist "%LOCALAPPDATA%\Programs\Python\Python310\python.exe" (
+            set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python310\python.exe"
+        ) else if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.exe" (
+            set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python311\python.exe"
+        ) else if exist "%LOCALAPPDATA%\Programs\Python\Python312\python.exe" (
+            set "PYTHON_EXE=%LOCALAPPDATA%\Programs\Python\Python312\python.exe"
+        ) else (
+            echo [ERROR] Python not found. Please install Python 3.10+ from python.org
+            pause
+            exit /b 1
+        )
     )
 )
 start "" "%PYTHON_EXE%" run.py
