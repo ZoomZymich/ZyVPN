@@ -295,7 +295,7 @@ def generate_tun_helper_config(settings: AppSettings, node: Optional[VpnNode] = 
         "dns": {
             "servers": [
                 {"tag": "remote-dns", "type": "udp", "server": dns_server, "detour": "proxy"},
-                {"tag": "local-dns", "type": "udp", "server": "77.88.8.8", "detour": "direct"}
+                {"tag": "local-dns", "type": "udp", "server": "77.88.8.8"}
             ],
             "rules": dns_rules
         },
@@ -429,7 +429,7 @@ def generate_singbox_config(node: VpnNode, settings: AppSettings, enable_tun: bo
         "dns": {
             "servers": [
                 {"tag": "remote-dns", "type": "udp", "server": dns_server, "detour": "proxy"},
-                {"tag": "local-dns", "type": "udp", "server": "77.88.8.8", "detour": "direct"}
+                {"tag": "local-dns", "type": "udp", "server": "77.88.8.8"}
             ],
             "rules": dns_rules
         },
