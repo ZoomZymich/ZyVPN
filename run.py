@@ -17,7 +17,10 @@ os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
 )
 
 # Ensure project root in sys.path
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
 import zyvpn
@@ -118,11 +121,16 @@ def ensure_admin():
                 params = f'"{script_path}" ' + " ".join(args)
 
             ret = ctypes.windll.shell32.ShellExecuteW(None, "runas", exe, params.strip(), BASE_DIR, 1)
-            # Exit current non-elevated process
-            sys.exit(0)
+            # If ShellExecuteW succeeded (> 32), exit the non-elevated parent process
+            if ret > 32:
+                sys.exit(0)
+            else:
+                # User declined UAC or system disallowed elevation: continue in standard user mode
+                print("Notice: UAC elevation was declined or unavailable. Continuing in standard user mode (System Proxy).")
+                _instance_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
         except Exception as e:
-            print(f"UAC elevation failed: {e}")
-            sys.exit(1)
+            print(f"Notice: UAC elevation prompt bypassed: {e}")
+            _instance_mutex = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
 
 ensure_admin()
 
@@ -150,6 +158,12 @@ def show_window():
         try:
             window.show()
             window.restore()
+            if sys.platform == "win32" and hasattr(window, "native") and window.native:
+                try:
+                    window.native.BringToFront()
+                    window.native.Activate()
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -318,4 +332,22 @@ def main():
         on_exit()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as exc:
+        import traceback
+        err_msg = traceback.format_exc()
+        try:
+            log_dir = get_data_dir()
+            with open(os.path.join(log_dir, "crash.log"), "w", encoding="utf-8") as f:
+                f.write(err_msg)
+        except Exception:
+            pass
+        if sys.platform == "win32":
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                f"ZyVPN Startup Error:\n{exc}\n\nCheck %APPDATA%\\ZyVPN\\crash.log for details.",
+                "ZyVPN Error",
+                0x10
+            )
+        sys.exit(1)

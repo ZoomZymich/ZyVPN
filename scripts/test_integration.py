@@ -16,6 +16,8 @@ def test_full_flow():
     api = VpnApi(storage, core)
 
     # 1. Test importing single VLESS XHTTP node
+    storage.nodes = [n for n in storage.nodes if "Netherlands-XHTTP-Reality" not in n.name]
+    storage.save()
     xhttp_link = (
         "vless://269c3a35-1886-4e5c-a5b8-5777ce404ea1@104.16.12.34:443"
         "?security=reality&sni=gateway.icloud.com&fp=chrome"

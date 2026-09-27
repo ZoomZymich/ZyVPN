@@ -31,9 +31,9 @@ class TrayController:
         self._thread: Optional[threading.Thread] = None
 
     def _get_status_text(self) -> str:
-        st = self.api.core.status
+        st = self.api._core.status
         if st == "connected":
-            node = self.api.core.current_node
+            node = self.api._core.current_node
             name = node.name if node else "Сервер"
             return f"Подключено: {name}"
         elif st == "connecting":
@@ -42,25 +42,25 @@ class TrayController:
             return "Отключено"
 
     def _is_connected(self) -> bool:
-        return self.api.core.status == "connected"
+        return self.api._core.status == "connected"
 
     def _is_tun_mode(self) -> bool:
-        return self.api.storage.settings.mode == "tun"
+        return self.api._storage.settings.mode == "tun"
 
     def _is_proxy_mode(self) -> bool:
-        return self.api.storage.settings.mode == "proxy"
+        return self.api._storage.settings.mode == "proxy"
 
     def _is_bypass_ru(self) -> bool:
-        return self.api.storage.settings.routing_mode == "bypass_ru_lan"
+        return self.api._storage.settings.routing_mode == "bypass_ru_lan"
 
     def _is_global(self) -> bool:
-        return self.api.storage.settings.routing_mode == "global"
+        return self.api._storage.settings.routing_mode == "global"
 
     def _action_toggle_connect(self, icon, item):
         if self._is_connected():
             self.api.disconnect()
         else:
-            selected_id = self.api.storage.settings.selected_node_id
+            selected_id = self.api._storage.settings.selected_node_id
             self.api.connect(selected_id)
         self.update()
 

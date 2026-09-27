@@ -1,3 +1,4 @@
+import sys
 import time
 import threading
 import requests
@@ -174,10 +175,10 @@ def check_gemini_service(proxies: Optional[Dict[str, str]] = None) -> Dict[str, 
 class VpnApi:
     """API exposed to JavaScript frontend in PyWebView or HTTP server."""
     def __init__(self, storage: Storage, core: CoreController):
-        self.storage = storage
-        self.core = core
-        self.window = None
-        self.tray = None
+        self._storage = storage
+        self._core = core
+        self._window = None
+        self._tray = None
         self._is_maximized = False
         self._cached_ip_info = {
             "success": False,
@@ -195,28 +196,28 @@ class VpnApi:
         self._is_fetching_ip = False
 
     def set_window(self, window):
-        self.window = window
+        self._window = window
 
     def set_tray(self, tray):
-        self.tray = tray
+        self._tray = tray
 
     def window_minimize(self) -> Dict[str, Any]:
-        if self.window:
+        if self._window:
             try:
-                self.window.minimize()
+                self._window.minimize()
                 return {"success": True}
             except Exception as e:
                 return {"success": False, "error": str(e)}
         return {"success": False}
 
     def window_toggle_maximize(self) -> Dict[str, Any]:
-        if self.window:
+        if self._window:
             try:
                 if self._is_maximized:
-                    self.window.restore()
+                    self._window.restore()
                     self._is_maximized = False
                 else:
-                    self.window.maximize()
+                    self._window.maximize()
                     self._is_maximized = True
                 return {"success": True, "maximized": self._is_maximized}
             except Exception as e:
@@ -225,18 +226,18 @@ class VpnApi:
 
     def window_close(self) -> Dict[str, Any]:
         """Minimize to tray instead of abruptly closing, keeping VPN active."""
-        if self.window:
+        if self._window:
             try:
-                self.window.hide()
-                if self.tray:
-                    self.tray.notify(
+                self._window.hide()
+                if self._tray:
+                    self._tray.notify(
                         "ZyVPN свёрнут в трей",
                         "Приложение и VPN продолжают работать в фоне. Чтобы открыть — дважды кликните по иконке в трее."
                     )
                 return {"success": True, "minimized_to_tray": True}
             except Exception as e:
                 try:
-                    self.window.destroy()
+                    self._window.destroy()
                     return {"success": True}
                 except Exception:
                     return {"success": False, "error": str(e)}
@@ -245,118 +246,136 @@ class VpnApi:
     def app_quit(self) -> Dict[str, Any]:
         """Completely exit the application, stopping all engines and removing tray icon."""
         try:
-            self.core.stop()
-            if self.tray:
-                self.tray.stop()
-            if self.window:
-                self.window.destroy()
+            self._core.stop()
+            if self._tray:
+                self._tray.stop()
+            if self._window:
+                self._window.destroy()
             sys.exit(0)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     def get_initial_data(self) -> Dict[str, Any]:
         return {
-            "nodes": [n.to_dict() for n in self.storage.nodes],
-            "subscriptions": [s.to_dict() for s in self.storage.subscriptions],
-            "settings": self.storage.settings.to_dict(),
-            "status": self.core.get_status()
+            "nodes": [n.to_dict() for n in self._storage.nodes],
+            "subscriptions": [s.to_dict() for s in self._storage.subscriptions],
+            "settings": self._storage.settings.to_dict(),
+            "status": self._core.get_status()
         }
 
     def connect(self, node_id: Optional[str] = None) -> Dict[str, Any]:
         if node_id:
-            self.storage.set_selected_node(node_id)
-        node = self.storage.get_selected_node()
+            self._storage.set_selected_node(node_id)
+        node = self._storage.get_selected_node()
         if not node:
             return {"success": False, "error": "No VPN node selected"}
         
-        ok = self.core.start(node, self.storage.settings)
-        if self.tray:
-            self.tray.update()
-        return {"success": ok, "error": self.core.error_message, "status": self.core.get_status()}
+        ok = self._core.start(node, self._storage.settings)
+        if self._tray:
+            self._tray.update()
+        return {"success": ok, "error": self._core.error_message, "status": self._core.get_status()}
 
     def disconnect(self) -> Dict[str, Any]:
-        self.core.stop()
-        if self.tray:
-            self.tray.update()
-        return {"success": True, "status": self.core.get_status()}
+        self._core.stop()
+        if self._tray:
+            self._tray.update()
+        return {"success": True, "status": self._core.get_status()}
 
     def select_node(self, node_id: str) -> Dict[str, Any]:
-        self.storage.set_selected_node(node_id)
-        node = self.storage.get_selected_node()
+        self._storage.set_selected_node(node_id)
+        node = self._storage.get_selected_node()
         return {"success": True, "selected_node": node.to_dict() if node else None}
 
     def add_subscription(self, url: str, name: Optional[str] = None) -> Dict[str, Any]:
         try:
-            sub = self.storage.add_subscription(url, name)
+            sub = self._storage.add_subscription(url, name)
             return {
                 "success": True,
                 "subscription": sub.to_dict(),
-                "subscriptions": [s.to_dict() for s in self.storage.subscriptions],
+                "subscriptions": [s.to_dict() for s in self._storage.subscriptions],
                 "nodes_count": sub.nodes_count,
-                "nodes": [n.to_dict() for n in self.storage.nodes]
+                "nodes": [n.to_dict() for n in self._storage.nodes]
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     def refresh_subscription(self, sub_id: str) -> Dict[str, Any]:
         try:
-            count = self.storage.refresh_subscription(sub_id)
+            count = self._storage.refresh_subscription(sub_id)
             return {
                 "success": True,
                 "nodes_count": count,
-                "subscriptions": [s.to_dict() for s in self.storage.subscriptions],
-                "nodes": [n.to_dict() for n in self.storage.nodes]
+                "subscriptions": [s.to_dict() for s in self._storage.subscriptions],
+                "nodes": [n.to_dict() for n in self._storage.nodes]
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     def delete_subscription(self, sub_id: str) -> Dict[str, Any]:
-        self.storage.delete_subscription(sub_id)
+        self._storage.delete_subscription(sub_id)
         return {
             "success": True,
-            "subscriptions": [s.to_dict() for s in self.storage.subscriptions],
-            "nodes": [n.to_dict() for n in self.storage.nodes]
+            "subscriptions": [s.to_dict() for s in self._storage.subscriptions],
+            "nodes": [n.to_dict() for n in self._storage.nodes]
         }
 
     def import_text(self, text: str) -> Dict[str, Any]:
         try:
-            added = self.storage.import_text(text)
+            added = self._storage.import_text(text)
             return {
                 "success": True,
                 "nodes_added": added,
-                "nodes": [n.to_dict() for n in self.storage.nodes]
+                "nodes": [n.to_dict() for n in self._storage.nodes]
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
     def delete_node(self, node_id: str) -> Dict[str, Any]:
-        self.storage.delete_node(node_id)
+        self._storage.delete_node(node_id)
         return {
             "success": True,
-            "nodes": [n.to_dict() for n in self.storage.nodes]
+            "nodes": [n.to_dict() for n in self._storage.nodes]
         }
 
     def ping_single(self, node_id: str) -> Dict[str, Any]:
-        node = next((n for n in self.storage.nodes if n.id == node_id), None)
+        node = next((n for n in self._storage.nodes if n.id == node_id), None)
         if not node:
             return {"success": False, "error": "Node not found"}
         ping_ms = ping_node(node)
-        self.storage.save()
+        self._storage.save()
         return {"success": True, "ping_ms": ping_ms}
 
     def ping_all(self) -> Dict[str, Any]:
-        results = ping_all_nodes(self.storage.nodes)
-        self.storage.save()
+        results = ping_all_nodes(self._storage.nodes)
+        self._storage.save()
         return {"success": True, "results": results}
 
     def update_settings(self, settings_dict: Dict[str, Any]) -> Dict[str, Any]:
-        self.storage.update_settings(**settings_dict)
-        if self.tray:
-            self.tray.update()
-        return {"success": True, "settings": self.storage.settings.to_dict()}
+        was_connected = self._core.status == "connected"
+        old_mode = self._storage.settings.mode
+        old_routing = self._storage.settings.routing_mode
+        old_dns = self._storage.settings.dns_server
+
+        self._storage.update_settings(**settings_dict)
+
+        if was_connected:
+            needs_restart = (
+                self._storage.settings.mode != old_mode or
+                self._storage.settings.routing_mode != old_routing or
+                self._storage.settings.dns_server != old_dns
+            )
+            if needs_restart:
+                self._core.log("Настройки маршрутизации или режима изменены. Перезапуск туннеля...")
+                node = self._storage.get_selected_node()
+                if node:
+                    self._core.start(node, self._storage.settings)
+
+        if self._tray:
+            self._tray.update()
+        return {"success": True, "settings": self._storage.settings.to_dict()}
 
     def get_status(self) -> Dict[str, Any]:
-        return self.core.get_status()
+        return self._core.get_status()
 
     def _fetch_ip_worker(self, is_connected: bool, http_port: int):
         with self._ip_fetch_lock:
@@ -377,7 +396,7 @@ class VpnApi:
                 )
                 if r.status_code == 200:
                     data = r.json()
-                    if data.get("success", True):
+                    if data.get("success", True) and data.get("ip"):
                         ip_data = {
                             "ip": data.get("ip", ""),
                             "country_code": (data.get("country_code") or "").lower(),
@@ -397,11 +416,34 @@ class VpnApi:
                     )
                     if r.status_code == 200:
                         data = r.json()
-                        ip_data = {
-                            "ip": data.get("ip", ""),
-                            "country_code": (data.get("country") or "").lower(),
-                            "city": data.get("city", "")
-                        }
+                        if data.get("ip"):
+                            ip_data = {
+                                "ip": data.get("ip", ""),
+                                "country_code": (data.get("country") or "").lower(),
+                                "city": data.get("city", "")
+                            }
+                except Exception:
+                    pass
+
+            # 3. Universal fallback: api.ipify.org (universally reachable globally)
+            if not ip_data or not ip_data.get("ip"):
+                try:
+                    r = requests.get(
+                        "https://api.ipify.org?format=json",
+                        proxies=proxies,
+                        timeout=2.5,
+                        headers={"User-Agent": "Mozilla/5.0"}
+                    )
+                    if r.status_code == 200:
+                        data = r.json()
+                        if data.get("ip"):
+                            selected = self._storage.get_selected_node()
+                            fallback_cc = selected.country_code if (selected and is_connected) else "un"
+                            ip_data = {
+                                "ip": data.get("ip", ""),
+                                "country_code": fallback_cc,
+                                "city": ""
+                            }
                 except Exception:
                     pass
 
@@ -419,7 +461,7 @@ class VpnApi:
                     "flag_url": details["flag_url"]
                 }
             else:
-                selected = self.storage.get_selected_node()
+                selected = self._storage.get_selected_node()
                 fallback_country = selected.country_code if (selected and is_connected) else "un"
                 details = get_country_details(fallback_country)
                 self._cached_ip_info = {
@@ -438,18 +480,20 @@ class VpnApi:
 
     def get_connection_ip_info(self) -> Dict[str, Any]:
         """Return cached external IP, country, and location instantly without blocking the UI bridge."""
-        is_connected = self.core.status == "connected"
-        http_port = self.storage.settings.http_port
+        is_connected = self._core.status == "connected"
+        http_port = self._storage.settings.http_port
 
         now = time.time()
+        # Enforce minimum cooldown: 45s normal, or 15s if previous fetch failed, or immediate on connection state change
         needs_refresh = (
-            (now - self._ip_fetch_time > 45) or 
             (is_connected != self._cached_ip_info.get("connected")) or
-            (self._cached_ip_info.get("ip") == "—")
+            (now - self._ip_fetch_time > 45) or
+            (self._cached_ip_info.get("ip") == "—" and (now - self._ip_fetch_time > 15))
         )
 
         if needs_refresh and not self._is_fetching_ip:
             self._is_fetching_ip = True
+            self._ip_fetch_time = now # prevent burst calls before worker finishes
             t = threading.Thread(target=self._fetch_ip_worker, args=(is_connected, http_port), daemon=True)
             t.start()
 
@@ -457,8 +501,8 @@ class VpnApi:
 
     def check_blocked_services(self) -> Dict[str, Any]:
         """Test reachability of key blocked services through active proxy."""
-        http_port = self.storage.settings.http_port
-        is_connected = self.core.status == "connected"
+        http_port = self._storage.settings.http_port
+        is_connected = self._core.status == "connected"
         proxies = {
             "http": f"http://127.0.0.1:{http_port}",
             "https": f"http://127.0.0.1:{http_port}"
@@ -520,8 +564,8 @@ class VpnApi:
         svc = next((s for s in CHECK_SERVICES if s["id"] == service_id), None)
         if not svc:
             return {"success": False, "error": f"Service '{service_id}' not found"}
-        http_port = self.storage.settings.http_port
-        is_connected = self.core.status == "connected"
+        http_port = self._storage.settings.http_port
+        is_connected = self._core.status == "connected"
         proxies = {
             "http": f"http://127.0.0.1:{http_port}",
             "https": f"http://127.0.0.1:{http_port}"
@@ -567,8 +611,8 @@ class VpnApi:
 
     def test_gemini_dialog(self, prompt: str = "Привет! Ты сейчас работаешь через этот сервер?", api_key: str = "") -> Dict[str, Any]:
         """Test sending an actual prompt or verifying chat gateway through the current VPN connection."""
-        http_port = self.storage.settings.http_port
-        is_connected = self.core.status == "connected"
+        http_port = self._storage.settings.http_port
+        is_connected = self._core.status == "connected"
         proxies = {
             "http": f"http://127.0.0.1:{http_port}",
             "https": f"http://127.0.0.1:{http_port}"
